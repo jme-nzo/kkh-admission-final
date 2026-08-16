@@ -451,8 +451,10 @@ table.cmp .pos{color:var(--done)}
    full device mockup untouched.
    ============================================================ */
 @media (max-width:640px){
-  body{background:var(--paper);}                 /* kill the navy backdrop */
-  .stage{padding:0;overflow:visible;min-height:100dvh;}
+  /* Navy fills the whole viewport (incl. behind the notch); no page scroll. */
+  html,body{height:100dvh;overflow:hidden;overscroll-behavior:none;}
+  body{background:var(--navy);}                  /* kill the navy backdrop -> flat navy */
+  .stage{padding:0;overflow:hidden;min-height:100dvh;height:100dvh;}
   .device{transform:none!important;width:100%;height:100dvh;}
   .bezel{
     background:none;padding:0;border-radius:0;box-shadow:none;
@@ -462,10 +464,12 @@ table.cmp .pos{color:var(--done)}
   .island{display:none!important;}              /* dynamic island / notch */
   .statusbar{display:none!important;}           /* fake time / wifi / battery */
   .screen{
-    width:100%;height:100dvh;border-radius:0;
+    width:100%;height:100dvh;border-radius:0;overflow:hidden;
   }
-  /* keep app content clear of the phone's real notch / status area */
-  .app{padding-top:env(safe-area-inset-top);}
+  .app{height:100dvh;overflow:hidden;}
+  /* Extend the navy masthead up behind the phone's real status bar /
+     dynamic island so that whole strip is blue, not white. */
+  .masthead{padding-top:calc(6px + env(safe-area-inset-top));}
 }
 </style>
 </head>
