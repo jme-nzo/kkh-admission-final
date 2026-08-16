@@ -1,0 +1,2843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#091740">
+<title>Children's Emergency Admission Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Sans+Tamil:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#091740; --ink-soft:#3D5280; --ink-faint:#546A96;
+  --muted:#7A90BC;                       /* decorative only, never text */
+  --paper:#EBF0FA; --surface:#FFFFFF; --rule:#C8D5EC; --rule-strong:#A6BCE0;
+  --navy:#0D2666; --azure:#2460D9; --sky:#B8D0F5; --frost:#EBF2FD;
+  --primary:#1345B8;
+  --done:#1345B8; --done-wash:#EBF2FD; --done-ink:#0D2666;
+  --now:#D4006A; --now-wash:#FFF0F7; --now-tint:#FFD6EB; --now-lite:#F060A0; --now-ink:#A8005A;
+  --todo:#9CBAEC; --alert:#A8005A; --alert-wash:#FFD6EB;
+  /* go = your turn / move now. Kept apart from --done (blue history) so
+     green always means the caregiver has something to act on. */
+  --go:#0E7A46; --go-deep:#0A5C35; --go-wash:#E8F7EF; --go-tint:#A9DEC3; --go-ink:#08512F;
+  /* Headings and display -> Plus Jakarta Sans. Everything else -> Inter.
+     The old monospace role is kept as a name only; it now resolves to Inter
+     with tabular figures, so labels and data still align in columns. */
+  --font-display:'Plus Jakarta Sans','Noto Sans Tamil','Noto Sans SC',system-ui,sans-serif;
+  --font-body:'Inter','Noto Sans Tamil','Noto Sans SC',system-ui,-apple-system,sans-serif;
+  --font-mono:'Inter','Noto Sans Tamil','Noto Sans SC',system-ui,sans-serif;
+  --pad:16px; --radius:14px;
+  --sw:393px; --sh:852px; --bez:13px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font-body);
+  background:radial-gradient(120% 90% at 50% 0%,#0D2666 0%,#091740 62%);
+  color:var(--ink);line-height:1.5;font-size:16px;font-variant-numeric:tabular-nums;
+  min-height:100vh;overflow-x:hidden;overflow-y:auto;
+}
+/* ---------- stage: the phone, centred ---------- */
+.stage{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:36px 32px;box-sizing:border-box;overflow:hidden;}
+@media(max-width:920px){
+  .stage{padding:24px 16px;}
+}
+/* On phones the fixed device silhouette is scaled to fit the viewport via JS
+   (see fitDevice). transform-origin centres it while it scales down. */
+@media(max-width:640px){
+  .stage{padding:10px 8px;}
+}
+.device{will-change:transform;}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- iPhone 15 silhouette ---------- */
+.device{position:relative;flex-shrink:0;transform-origin:center center}
+.bezel{
+  position:relative;
+  width:calc(var(--sw) + var(--bez)*2);height:calc(var(--sh) + var(--bez)*2);
+  background:linear-gradient(155deg,#4A4E55 0%,#23262B 22%,#33373D 52%,#1B1E22 78%,#43474D 100%);
+  border-radius:60px;padding:var(--bez);
+  box-shadow:0 0 0 1.5px #0A0C0F, 0 40px 90px rgba(0,0,0,.6), inset 0 0 3px rgba(255,255,255,.4);
+}
+.screen{position:relative;width:var(--sw);height:var(--sh);background:var(--paper);border-radius:47px;overflow:hidden}
+.btn-side{position:absolute;background:linear-gradient(90deg,#2A2D33,#4C5158);border-radius:2px}
+.b-silent{left:-2px;top:118px;width:4px;height:30px}
+.b-up{left:-2.5px;top:176px;width:5px;height:62px}
+.b-down{left:-2.5px;top:252px;width:5px;height:62px}
+.b-power{right:-2.5px;top:210px;width:5px;height:100px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;background:#000;border-radius:99px;z-index:40}
+.island::after{content:"";position:absolute;right:12px;top:11px;width:13px;height:13px;border-radius:50%;background:#14161B;box-shadow:inset 0 0 0 1px #24272E}
+
+/* ---------- status bar ---------- */
+.statusbar{flex-shrink:0;height:56px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:14px 30px 0;font-size:15px;font-weight:600}
+.sb-right{display:flex;align-items:center;gap:5px}
+.sig{display:flex;align-items:flex-end;gap:2px;height:11px}
+.sig i{width:3px;background:#fff;border-radius:1px}
+.sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}
+.sig i:nth-child(3){height:8.5px}.sig i:nth-child(4){height:11px}
+.wifi{display:block;width:16px;height:12px;flex:0 0 auto}
+.batt{width:24px;height:12px;border:1.5px solid rgba(255,255,255,.6);border-radius:3.5px;position:relative;padding:1.5px}
+.batt::after{content:"";position:absolute;right:-3.5px;top:3.5px;width:2px;height:4px;background:rgba(255,255,255,.6);border-radius:0 2px 2px 0}
+.batt span{display:block;height:100%;width:72%;background:#fff;border-radius:1.5px}
+
+/* ---------- app shell ---------- */
+.app{position:absolute;inset:0;display:flex;flex-direction:column}
+.masthead{flex-shrink:0;background:var(--ink);color:#fff;padding:6px var(--pad) 0}
+.masthead-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* logo: square lockup, trimmed of its transparent margin and shipped at 3x */
+.mark{flex:0 0 auto;display:block;height:26px;width:auto}
+.lang-wrap{position:relative;flex-shrink:0}
+.lang-wrap::after{content:"";position:absolute;right:10px;top:50%;width:5px;height:5px;margin-top:-4px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg);pointer-events:none}
+#langSelect{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:7px 24px 7px 9px;font-family:var(--font-body);font-size:13px;font-weight:500;min-height:36px}
+#langSelect option{color:var(--ink);background:#fff}
+.tabs{display:flex;gap:2px;margin-top:6px}
+.tab{font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62);padding:10px 12px 11px;border-bottom:3px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:#fff;border-bottom-color:#fff}
+.body{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;padding:0 var(--pad);background:var(--paper)}
+/* help and staff read as ordinary scrolling pages, clear of the finance pill */
+.view.scrolls{overflow-y:auto;padding:18px var(--pad) 30px}
+.view.home{display:flex;flex-direction:column;overflow:hidden;padding-bottom:82px}
+/* keep last, and keep it class based: an id rule here outranks it and leaks the view */
+.view[hidden]{display:none}
+.view.scrolls::-webkit-scrollbar{width:0}
+
+/* ---------- toasts ---------- */
+.toasts{position:absolute;top:58px;left:12px;right:12px;z-index:90;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  pointer-events:auto;cursor:pointer;background:#fff;color:var(--ink);
+  border:1px solid rgba(9,23,64,.09);border-radius:15px;padding:13px 15px;
+  display:flex;align-items:center;gap:11px;font-size:14.5px;font-weight:600;line-height:1.3;
+  box-shadow:0 14px 32px rgba(9,23,64,.34);
+  animation:toastIn .3s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.toast::before{content:"";flex-shrink:0;width:9px;height:9px;border-radius:50%;background:var(--go);box-shadow:0 0 0 4px rgba(14,122,70,.16)}
+.toast.out{animation:toastOut .24s ease-in both}
+@keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.97)}}
+
+/* ---------- floating finance ---------- */
+.fin-btn{position:absolute;right:12px;z-index:70;background:var(--ink);color:#fff;border-radius:99px;padding:9px 15px 9px 12px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;box-shadow:0 8px 22px rgba(9,23,64,.34)}
+.fin-btn b{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--now);color:#fff;font-size:12px;font-weight:800}
+.fin-panel{position:absolute;right:10px;left:10px;z-index:75;background:var(--surface);border:1.5px solid var(--rule);border-radius:18px;box-shadow:0 22px 54px rgba(9,23,64,.42);overflow-y:auto;display:none;animation:panelIn .24s cubic-bezier(.2,.9,.3,1.1) both}
+.fin-panel.open{display:block}
+@keyframes panelIn{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+.fin-panel::-webkit-scrollbar{width:0}
+.fin-head{position:sticky;top:0;background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px 10px;border-bottom:1.5px solid var(--rule);z-index:2}
+.fin-head h2{font-family:var(--font-display);font-size:19px;font-weight:800;letter-spacing:-.025em}
+.fin-x{width:32px;height:32px;border-radius:50%;background:var(--paper);font-size:17px;line-height:1;color:var(--ink-soft);flex-shrink:0}
+.fin-body{padding:14px 16px 18px}
+/* Finance is a set of panels now, one shown at a time, so no top margin
+   and no first-child special case. */
+.fsec{margin-top:0}
+/* Ask is a conversation, not a document: it fills the panel instead of
+   sitting in a fixed box with the page scrolling around it. */
+#view-finance.fill{display:flex;flex-direction:column;overflow:hidden}
+/* an ID beats .view[hidden], so hiding has to be restated here */
+#view-finance.fill[hidden]{display:none}
+#view-finance.fill #fs-ask{flex:1;min-height:0;display:flex;flex-direction:column}
+#view-finance.fill .chat-shell{flex:1;min-height:0}
+#view-finance.fill .chat-log{flex:1;max-height:none;min-height:0}
+.fsec[hidden]{display:none}
+@keyframes fsecIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fsec:not([hidden]){animation:fsecIn .22s ease-out both}
+@media(prefers-reduced-motion:reduce){.fsec:not([hidden]){animation:none}}
+.fsec-h{font-family:var(--font-display);font-size:15px;font-weight:700;letter-spacing:-.015em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+/* section icons: one set, drawn once in JS, reused by the header and the jump pill */
+.fsec-ic{flex:0 0 auto;display:inline-flex;color:var(--primary)}
+.fsec-ic svg{width:18px;height:18px}
+.fsec-h > span:last-child{min-width:0}
+
+/* chat */
+.chat-shell{background:var(--paper);border:1.5px solid var(--rule);border-radius:13px;display:flex;flex-direction:column}
+.chat-log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:64px;max-height:108px;transition:max-height .3s ease}
+.chat-shell.open .chat-log{max-height:min(420px,calc(var(--sh) - 430px))}
+.chat-log::-webkit-scrollbar{width:0}
+.msg{max-width:92%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.42}
+.msg.bot{background:var(--surface);border-bottom-left-radius:4px;align-self:flex-start}
+.msg.me{background:var(--ink);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.msg.bot em{display:block;margin-top:5px;font-style:normal;font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 9px}
+.chip{font-size:11.5px;padding:6px 10px;border-radius:99px;text-align:left;border:1.5px solid var(--rule-strong);color:var(--ink-soft);background:var(--surface)}
+.chat-bar{display:flex;gap:6px;padding:9px;border-top:1.5px solid var(--rule);background:var(--surface);border-radius:0 0 11px 11px}
+.chat-bar input{flex:1;min-width:0;font:inherit;font-size:14px;padding:9px 11px;border:1.5px solid var(--rule);border-radius:9px;background:var(--paper);color:var(--ink)}
+.send{background:var(--primary);color:#fff;border-radius:9px;padding:0 14px;font-weight:600;font-size:13.5px;min-height:38px}
+.send:disabled{opacity:.4}
+.typing span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ink-faint);margin-right:4px;animation:blink 1.3s infinite}
+.typing span:nth-child(2){animation-delay:.18s}
+.typing span:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.wclass{width:100%;text-align:left;display:block;background:var(--surface);border:1.5px solid var(--rule);border-radius:11px;padding:10px 12px;margin-bottom:6px}
+.wclass[aria-pressed="true"]{border-color:var(--primary);border-width:2px;padding:9px 11px}
+.wclass-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.wclass-name{font-family:var(--font-display);font-size:15px;font-weight:700;letter-spacing:-.02em}
+.wclass-price{font-family:var(--font-mono);font-size:11.5px;font-weight:600}
+.wclass-feat{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.wclass-avail{font-family:var(--font-mono);font-size:10px;font-weight:600;margin-top:5px;color:var(--done)}
+.wclass-avail.low{color:var(--alert)}
+.est{background:var(--ink);color:#fff;border-radius:12px;padding:13px;margin-top:8px}
+.est-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid rgba(255,255,255,.14);font-size:13px}
+.est-row:first-of-type{border-top:none}
+.est-row span{color:rgba(255,255,255,.7)}
+.est-row b{font-family:var(--font-mono);font-weight:600;text-align:right}
+.est-big b{font-size:16px;color:var(--now-lite)}
+.sel{width:100%;font:inherit;font-size:14.5px;padding:11px 12px 11px 38px;border:1.5px solid var(--rule);border-radius:11px;background:var(--paper);color:var(--ink);appearance:none;-webkit-appearance:none}
+.sel-wrap{position:relative}
+.sel-wrap::after{content:"";position:absolute;right:14px;top:50%;width:6px;height:6px;margin-top:-5px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);pointer-events:none}
+/* searchable insurer combobox */
+.ins-combo{position:relative}
+.ins-combo .ins-mag{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink-faint);pointer-events:none}
+.ins-list{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:30;max-height:216px;overflow-y:auto;background:var(--surface);border:1.5px solid var(--rule);border-radius:12px;box-shadow:0 16px 38px rgba(9,23,64,.22)}
+.ins-list[hidden]{display:none}
+.ins-list::-webkit-scrollbar{width:0}
+.ins-opt{display:block;width:100%;text-align:left;padding:10px 12px;font-size:13px;line-height:1.35;color:var(--ink);border-bottom:1px solid var(--rule)}
+.ins-opt:last-child{border-bottom:none}
+.ins-opt:hover,.ins-opt.active{background:var(--paper)}
+.ins-opt mark{background:var(--now-wash);color:inherit;font-weight:700;border-radius:2px;padding:0 1px}
+.ins-combo .sel{padding-right:40px}
+.ins-x{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:27px;height:27px;
+  display:flex;align-items:center;justify-content:center;border-radius:50%;color:var(--ink-faint)}
+.ins-x[hidden]{display:none}
+.ins-x:hover{background:var(--paper);color:var(--ink)}
+.ins-x svg{width:15px;height:15px}
+.ins-shut{display:block;font-style:normal;font-size:11px;color:var(--ink-faint);margin-top:2px}
+.plan-kids{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.plan-kids .ins-opt{border:1px solid var(--rule);border-radius:9px}
+#planCard dl.kv+dl.kv{margin-top:6px}
+#riderSeg{margin-bottom:6px}
+.ins-empty{padding:11px 12px;font-size:12.5px;color:var(--ink-faint)}
+.log-line{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--ink-soft)}
+.check{width:100%;text-align:left;display:flex;gap:11px;align-items:flex-start;padding:10px 2px;border-top:1px solid var(--rule);font-size:13.5px}
+.check:first-of-type{border-top:none}
+.box{flex-shrink:0;width:21px;height:21px;border-radius:6px;border:2px solid var(--rule-strong);margin-top:1px;position:relative;background:var(--surface)}
+.check[aria-pressed="true"] .box{background:var(--done);border-color:var(--done)}
+.check[aria-pressed="true"] .box::after{content:"";position:absolute;left:6px;top:2px;width:4px;height:9px;border-right:2.5px solid #fff;border-bottom:2.5px solid #fff;transform:rotate(42deg)}
+.check[aria-pressed="true"] .check-t{color:var(--ink-faint);text-decoration:line-through}
+.check-t{flex:1;min-width:0}
+.card{background:var(--surface);border:1.5px solid var(--rule);border-radius:12px;padding:13px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--rule);font-size:13px}
+.kv:first-child{border-top:none;padding-top:0}
+.kv dt{color:var(--ink-soft)}
+.kv dd{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.btn{display:inline-block;background:var(--primary);color:#fff;border-radius:99px;padding:9px 16px;font-weight:600;font-size:13px;margin-top:10px;min-height:40px}
+
+/* ---------- home ---------- */
+.bed-toggle{flex-shrink:0;width:100%;text-align:left;background:var(--surface);border:1.5px solid var(--rule);border-radius:var(--radius);padding:12px;display:flex;align-items:center;gap:11px;margin-top:12px;transition:border-color .3s}
+.bed-toggle[aria-expanded="true"]{border-radius:var(--radius) var(--radius) 0 0}
+.bed-toggle.assigned{border-color:var(--done);border-width:2px}
+.bed-mark{flex-shrink:0;width:42px;height:42px;border-radius:11px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--ink-faint);letter-spacing:-.03em;transition:background .3s,color .3s}
+.bed-toggle.assigned .bed-mark{background:var(--done-wash);color:var(--done)}
+.bed-text{flex:1;min-width:0}
+.bed-label{display:block;font-weight:600;font-size:14px;line-height:1.25}
+.bed-sub{display:block;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);margin-top:3px}
+.chev{flex-shrink:0;width:10px;height:10px;border-right:2.5px solid var(--ink-soft);border-bottom:2.5px solid var(--ink-soft);transform:rotate(45deg);margin-top:-5px;transition:transform .22s}
+.bed-toggle[aria-expanded="true"] .chev{transform:rotate(-135deg);margin-top:4px}
+.bed-panel{flex-shrink:0;background:var(--surface);border:1.5px solid var(--rule);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:13px;max-height:180px;overflow-y:auto}
+.bed-panel[hidden]{display:none}
+.note{font-size:11.5px;color:var(--ink-faint);margin-top:10px;padding-top:9px;border-top:1px solid var(--rule)}
+
+.journey-head .headline{font-size:21px}
+.journey-head{flex-shrink:0;margin-top:16px;display:flex;gap:12px;align-items:flex-end;justify-content:space-between}
+.headline{font-family:var(--font-display);font-size:27px;font-weight:800;line-height:1.06;letter-spacing:-.03em}
+/* icon rides at the headline's own size, aligned on the cap height */
+.headline.hl-ic{display:flex;align-items:center;gap:10px;margin:5px 0 18px}
+.headline.hl-ic .fsec-ic svg{width:27px;height:27px;stroke-width:1.6}
+/* waiting number: pale until called, then the Ready for you palette */
+.queue{flex-shrink:0;text-align:center;background:var(--go-wash);border:2px solid var(--go-tint);border-radius:11px;padding:6px 11px 7px;transition:background .35s,border-color .35s}
+.queue-label{display:block;font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:.11em;text-transform:uppercase;color:var(--go);opacity:.78}
+.queue-num{display:block;font-family:var(--font-mono);font-size:19px;font-weight:600;letter-spacing:.04em;color:var(--go-ink);margin-top:1px;line-height:1.1;transition:color .35s}
+/* same palette as the Ready for you pill: wash fill, solid border, dark ink */
+.queue.called{background:var(--go-wash);border-color:var(--go)}
+.queue.called .queue-label{color:var(--go-ink);opacity:1}
+.queue.called .queue-num{color:var(--go-ink)}
+.queue[hidden]{display:none}
+@keyframes queuePop{0%{opacity:0;transform:scale(.8) translateY(-7px)}62%{opacity:1;transform:scale(1.07) translateY(0)}100%{opacity:1;transform:scale(1)}}
+.queue.pop{animation:queuePop .44s cubic-bezier(.2,.85,.3,1)}
+/* fires once, when the number is called for triage, then never again */
+.queue.flash{animation:queueFlash 1.15s ease-out 1 both}
+@keyframes queueFlash{
+  0%{box-shadow:0 0 0 0 rgba(169,222,195,.9)}
+  65%{box-shadow:0 0 0 11px rgba(169,222,195,0)}
+  100%{box-shadow:0 0 0 0 rgba(169,222,195,0)}
+}
+@media(prefers-reduced-motion:reduce){.queue.flash{animation:none}}
+
+/* fixed timeline window: the current circle holds one position, stages move */
+.line-wrap{flex:1;min-height:0;position:relative;margin:14px 0 0;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+
+/* The journey as a dial, zoomed right into the crown of the wheel. The
+   circle is 760px across with its centre far below the screen, so all you
+   see is a shallow arch. The stop in hand sits at the apex, dead centre,
+   and the wheel turns clockwise under it as you move along. */
+.arch{position:relative;flex-shrink:0;height:126px;width:100%;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 17%,#000 83%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 17%,#000 83%,transparent 100%)}
+.arch-wheel{position:absolute;left:50%;top:796px;width:0;height:0;
+  transition:transform .45s cubic-bezier(.4,0,.2,1)}
+.arch-svg{position:absolute;left:-760px;top:-760px;overflow:visible}
+.arch-track,.arch-fill{fill:none;stroke-width:6}
+.arch-track{stroke:var(--todo)}
+.arch-fill{stroke:var(--done);transform:rotate(-90deg);transform-origin:760px 760px;
+  transition:stroke-dasharray .45s cubic-bezier(.4,0,.2,1)}
+.arch-node{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--surface);
+  border:5px solid var(--todo);box-shadow:0 0 0 4px var(--paper);z-index:2;
+  transition:transform .45s cubic-bezier(.4,0,.2,1)}
+.arch-node.is-done{border-color:var(--done);background:var(--done)}
+.arch-node.is-done::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:7.5px;
+  border-right:2px solid #fff;border-bottom:2px solid #fff;transform:translate(-50%,-66%) rotate(42deg)}
+.arch-node.is-now{width:38px;height:38px;border-width:7px;border-color:var(--now);background:var(--now);
+  box-shadow:0 0 0 5px var(--paper),0 3px 13px rgba(9,23,64,.18)}
+.arch-node.is-now::before{content:"";position:absolute;inset:-9px;border-radius:50%;
+  border:2.5px solid var(--now);animation:ping 2s ease-out infinite}
+.arch[data-now="ready"] .arch-node.is-now{border-color:var(--go);background:var(--go)}
+.arch[data-now="ready"] .arch-node.is-now::before{animation:none;opacity:0}
+.arch[data-now="ready"] .arch-node.is-now::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:13px;
+  border-right:3.5px solid #fff;border-bottom:3.5px solid #fff;transform:translate(-50%,-66%) rotate(42deg)}
+
+/* everything the old current-step card carried, sitting under the apex */
+.dial-core{width:min(300px,92%);margin:2px auto 0;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:8px}
+.dial-core .stop-when{margin:0}
+.dial-core .stop-title{font-size:27px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.dial-core .pills{justify-content:center;margin-top:0}
+.dial-core .stop-dir{width:100%}
+
+@keyframes ping{0%{transform:scale(.85);opacity:.9}70%,100%{transform:scale(1.12);opacity:0}}
+.stop-when{display:block;font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--now)}
+.stop-title{font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:-.015em;line-height:1.22}
+.stop-chev{flex-shrink:0;width:9px;height:9px;border-right:2.5px solid var(--ink-faint);border-bottom:2.5px solid var(--ink-faint);transform:translateY(-2px) rotate(45deg);transition:transform .22s}
+.faq-q[aria-expanded="true"] .stop-chev{transform:rotate(-135deg);margin-top:9px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.stop.is-now .pills{margin-top:11px}
+.pill{font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:4px 8px;border:1.5px solid var(--rule-strong);color:var(--ink-soft)}
+.stop.is-now .pill{font-size:10.5px;padding:5px 10px}
+.pill.status i,.pill.dot i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink-faint);margin-right:5px;vertical-align:middle;margin-top:-2px}
+.pill.status[data-state="processing"],.pill.status[data-state="idle"],.pill.dot[data-state="processing"]{border-color:var(--now);background:var(--now-wash);color:var(--now-ink)}
+.pill.status[data-state="processing"] i,.pill.status[data-state="idle"] i,.pill.dot[data-state="processing"] i{background:var(--now);animation:pulse 1.1s ease-in-out infinite}
+.pill.status[data-state="ready"],.pill.dot[data-state="ready"]{border-color:var(--go);background:var(--go-wash);color:var(--go-ink)}
+.pill.status[data-state="ready"] i,.pill.dot[data-state="ready"] i{background:var(--go)}
+@keyframes pulse{0%,100%{opacity:.28}50%{opacity:1}}
+
+/* wayfinding dropdown shown when a stop turns ready */
+.stop-dir{margin-top:2px}
+.stop-dir[hidden]{display:none}
+.dir-q{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--done-wash);border:1.5px solid var(--done);border-radius:11px;padding:9px 11px;color:var(--done-ink);font-weight:700;font-size:12.5px}
+.dir-ico{flex-shrink:0;font-size:14px;line-height:1}
+.dir-t{flex:1;min-width:0}
+.dir-q .stop-chev{border-color:var(--done-ink)}
+.dir-q[aria-expanded="true"] .stop-chev{transform:translateY(2px) rotate(-135deg)}
+.dir-a{margin-top:8px;padding:0;font-size:13px;line-height:1.5;color:var(--ink-soft)}
+.dir-a[hidden]{display:none}
+.dial-core .dir-q{font-size:12px;padding:7px 9px}
+.dial-core .dir-a{margin-top:6px;font-size:12px;line-height:1.42}
+
+.controls{position:absolute;left:50%;transform:translateX(-50%);bottom:22px;z-index:60;width:calc(100% - 24px);display:flex;align-items:center;gap:7px;background:var(--ink);border-radius:99px;padding:7px;box-shadow:0 12px 34px rgba(9,23,64,.42)}
+.controls[hidden]{display:none}
+.ctrl{border-radius:99px;padding:0 16px;min-height:42px;font-weight:600;font-size:14.5px;white-space:nowrap;background:rgba(255,255,255,.15);color:#fff;transition:opacity .18s,background .18s}
+.ctrl.back{flex:0 0 auto;width:42px;padding:0;display:flex;align-items:center;justify-content:center}
+.ctrl.back i{display:block;width:9px;height:9px;border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;transform:rotate(45deg);margin-left:3px}
+.ctrl.primary[hidden]{display:none}
+.ctrl:disabled{opacity:.28;cursor:not-allowed}
+.ctrl.primary{background:var(--go);color:#fff}
+.ctrl.primary:disabled{background:rgba(255,255,255,.15);color:#fff}
+.ctrl-hint{flex:1;min-width:0;text-align:center;font-size:10.5px;font-weight:500;line-height:1.25;color:rgba(255,255,255,.62)}
+.ctrl-hint b{display:block;color:#fff;font-weight:600}
+
+/* help + staff */
+.eyebrow{font-family:var(--font-mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.faq{margin-top:6px;border-top:1.5px solid var(--rule)}
+.faq-item{border-bottom:1.5px solid var(--rule)}
+.faq-q{width:100%;text-align:left;display:flex;gap:10px;align-items:flex-start;padding:14px 2px;font-weight:600;font-size:14px}
+.faq-q .n{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:3px;flex-shrink:0}
+.faq-q .t{flex:1;min-width:0}
+.faq-a{padding:0 2px 15px;color:var(--ink-soft);font-size:13px}
+.faq-a[hidden]{display:none}
+.sec{margin-top:18px}
+.sec-h{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.02em;margin-bottom:8px}
+.field{margin-top:10px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px}
+.field input,.field select{width:100%;font:inherit;font-size:15px;padding:10px 12px;border:1.5px solid var(--rule);border-radius:10px;background:var(--paper);color:var(--ink)}
+.hintline{font-size:11.5px;color:var(--ink-faint);margin-top:4px}
+.switch{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:10px 0;font-size:13px}
+.sw{flex-shrink:0;width:44px;height:26px;border-radius:99px;background:var(--muted);position:relative;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch[aria-pressed="true"] .sw{background:var(--primary)}
+.switch[aria-pressed="true"] .sw::after{transform:translateX(18px)}
+.callout{margin-top:16px;padding:15px;background:var(--ink);color:#fff;border-radius:var(--radius)}
+.callout h3{font-family:var(--font-display);font-size:15px;font-weight:700;margin-bottom:4px}
+.callout p{font-size:12.5px;color:rgba(255,255,255,.75)}
+.staff-note{background:var(--alert-wash);border:1.5px solid var(--now-tint);border-radius:11px;padding:10px 12px;font-size:12px;color:var(--alert);margin-top:12px;line-height:1.4}
+.src{display:inline-block;font-family:var(--font-mono);font-size:8.5px;font-weight:600;letter-spacing:.08em;background:var(--paper);color:var(--ink-faint);border-radius:4px;padding:2px 4px;margin-left:5px;vertical-align:1px}
+.log-row{padding:9px 0;border-top:1px solid var(--rule);font-size:12px;line-height:1.4}
+.log-row:first-child{border-top:none}
+.log-meta{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-faint);margin-top:2px}
+.due{color:var(--alert);font-weight:600}
+.empty{text-align:center;color:var(--ink-faint);padding:24px 10px;font-size:13px}
+/* ---------- section index and scroll affordances ---------- */
+.jump{flex-shrink:0;z-index:20;display:flex;gap:5px;overflow-x:auto;padding:9px var(--pad);scrollbar-width:none;background:var(--surface);border-bottom:1px solid var(--rule);box-shadow:0 6px 10px -8px rgba(9,23,64,.18)}
+.jump[hidden]{display:none}
+.jump::-webkit-scrollbar{height:0}
+.jump button{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:6px 11px 6px 9px;border-radius:99px;border:1.5px solid var(--rule-strong);background:var(--surface);color:var(--ink-soft);white-space:nowrap}
+.jump button svg{width:14px;height:14px;flex:0 0 auto;opacity:.9}
+.jump button[aria-current="true"]{background:var(--primary);color:#fff;border-color:var(--primary)}
+.fademask{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:50;pointer-events:none;opacity:0;transition:opacity .25s ease;background:linear-gradient(to top,var(--paper) 12%,rgba(235,240,250,0))}
+.fademask.on{opacity:1}
+.scrollcue{position:absolute;left:50%;bottom:16px;z-index:55;display:flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:99px;padding:7px 13px 7px 14px;font-size:11.5px;font-weight:600;box-shadow:0 10px 26px rgba(9,23,64,.42);pointer-events:none;animation:cuebob 1.9s ease-in-out infinite}
+.scrollcue[hidden]{display:none}
+.scrollcue i{display:block;width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg) translate(-1px,-1px)}
+@keyframes cuebob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,5px)}}
+.fsec[id]{scroll-margin-top:12px}
+
+/* ---------- ward comparison, stay length, claim rules ---------- */
+.fsec-sub{font-size:12px;color:var(--ink-soft);margin:-3px 0 9px;line-height:1.45}
+.seg{display:flex;gap:4px;background:var(--paper);border-radius:9px;padding:3px;margin-bottom:9px}
+.seg-b{flex:1 1 0;width:0;border-radius:7px;padding:6px 4px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.seg-b[aria-selected="true"]{background:var(--surface);color:var(--primary);box-shadow:0 1px 3px rgba(9,23,64,.14)}
+.wclass-line{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:3px}
+.wclass-sub{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--ink-faint)}
+.wclass-body{display:none;border-top:1px solid var(--rule);margin-top:9px;padding-top:9px}
+.wclass[aria-pressed="true"] .wclass-body{display:block}
+.amen{display:flex;flex-wrap:wrap;gap:4px}
+.amen span{font-size:10.5px;background:var(--paper);color:var(--ink-soft);border-radius:5px;padding:3px 6px}
+.cl{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:600;letter-spacing:.03em;border-radius:5px;padding:3px 6px}
+.cl-ok{background:var(--done-wash);color:var(--done)}
+.cl-part{background:var(--now-wash);color:var(--now-ink)}
+.cl-no{background:var(--alert);color:#fff}
+.cl-why{font-size:11px;color:var(--ink-soft);line-height:1.45;margin-top:5px}
+.cmp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1.5px solid var(--rule);border-radius:12px;background:var(--surface)}
+table.cmp{border-collapse:collapse;width:100%;font-size:10.5px;table-layout:fixed}
+table.cmp th,table.cmp td{padding:6px 4px;border-top:1px solid var(--rule);text-align:center;white-space:normal;width:62px}
+table.cmp thead th{border-top:none;background:var(--paper);padding-top:8px;padding-bottom:8px}
+table.cmp th.rowh{text-align:left;position:sticky;left:0;background:var(--surface);color:var(--ink-soft);font-weight:500;white-space:normal;width:88px;padding-left:9px;z-index:1}
+table.cmp thead th.rowh{background:var(--paper)}
+table.cmp .pick{background:var(--now-wash)}
+table.cmp thead .pick{background:var(--now-tint)}
+table.cmp .cn{display:block;font-family:var(--font-display);font-weight:700;font-size:11.5px;letter-spacing:-.03em}
+table.cmp .cr{display:block;font-family:var(--font-mono);font-size:8.5px;font-weight:600;color:var(--ink-soft);margin-top:1px}
+table.cmp .num{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+table.cmp tr.big th,table.cmp tr.big td{border-top:2px solid var(--ink)}
+table.cmp tr.big th.rowh{color:var(--ink);font-weight:700}
+table.cmp tr.big .num{font-size:12px}
+table.cmp .cl{padding:2px 4px;font-size:8.5px;letter-spacing:0}
+table.cmp .neg{color:var(--alert)}
+table.cmp .pos{color:var(--done)}
+.cmp-note{font-size:10.5px;color:var(--ink-faint);line-height:1.5;margin-top:7px}
+.stay{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--paper);border-radius:10px;padding:8px 10px;margin-top:9px}
+.stay-l{font-size:12px;color:var(--ink-soft)}
+.stepper{display:flex;align-items:center;gap:8px}
+.step-b{width:27px;height:27px;border-radius:8px;background:var(--surface);border:1.5px solid var(--rule-strong);font-size:15px;font-weight:700;line-height:1}
+.step-b:disabled{opacity:.4}
+.stepper b{font-family:var(--font-mono);font-size:12.5px;min-width:62px;text-align:center}
+.insight{background:var(--now-wash);border:1.5px solid var(--now-tint);border-left-width:4px;border-radius:10px;padding:10px 12px;margin-top:9px;font-size:12px;line-height:1.5;color:var(--now-ink)}
+.insight b{display:block;font-family:var(--font-display);font-size:12.5px;line-height:1.35;margin-bottom:4px;color:var(--ink)}
+.plan-tier{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-soft)}
+.tier-pill{font-family:var(--font-mono);font-size:9.5px;font-weight:600;background:var(--ink);color:#fff;border-radius:5px;padding:3px 6px}
+.claim-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--rule)}
+.claim-row:first-child{border-top:none;padding-top:0}
+.claim-row.pick{background:var(--now-wash);margin:0 -13px;padding:9px 13px;border-radius:8px}
+.claim-row.pick + .claim-row{border-top:none}
+.claim-l{flex:1;min-width:0}
+.claim-w{font-size:13px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+<div class="device" id="device">
+  <div class="bezel">
+    <span class="btn-side b-silent"></span><span class="btn-side b-up"></span>
+    <span class="btn-side b-down"></span><span class="btn-side b-power"></span>
+    <div class="screen">
+      <div class="island" aria-hidden="true"></div>
+
+      <div class="app">
+        <div class="statusbar">
+          <span id="sbTime">9:41</span>
+          <span class="sb-right">
+            <span class="sig"><i></i><i></i><i></i><i></i></span>
+            <svg class="wifi" viewBox="0 0 16 12" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M2.64 6.5a7 7 0 0 1 10.72 0"/><path d="M4.48 8.04a4.6 4.6 0 0 1 7.04 0"/><path d="M6.31 9.59a2.2 2.2 0 0 1 3.38 0"/><circle cx="8" cy="11" r=".55" fill="#fff" stroke="none"/></svg><span class="batt"><span></span></span>
+          </span>
+        </div>
+
+        <header class="masthead">
+          <div class="masthead-row">
+            <img class="mark" alt="KKH Children's Emergency" src="data:image/png;base64,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">
+            <div class="lang-wrap">
+              <label for="langSelect" class="sr-only">Language</label>
+              <select id="langSelect">
+                <option value="en">EN</option><option value="zh">中文</option>
+                <option value="ms">MY</option><option value="ta">தமிழ்</option>
+              </select>
+            </div>
+          </div>
+          <nav class="tabs" role="tablist">
+            <button class="tab" role="tab" data-view="home" aria-selected="true" data-i18n="nav.home">Home</button>
+            <button class="tab" role="tab" data-view="finance" aria-selected="false" data-i18n="nav.finance">Finance</button>
+            <button class="tab" role="tab" data-view="help" aria-selected="false" data-i18n="nav.help">Help</button>
+            <button class="tab" role="tab" data-view="staff" aria-selected="false" data-i18n="nav.staff">Staff</button>
+          </nav>
+        </header>
+
+        <nav class="jump" id="finJump" aria-label="Sections" hidden></nav>
+
+        <div class="body">
+          <!-- HOME -->
+          <main class="view home" id="view-home">
+            <button class="bed-toggle" id="bedToggle" aria-expanded="false" aria-controls="bedPanel">
+              <span class="bed-mark" id="bedMark">—</span>
+              <span class="bed-text">
+                <span class="bed-label" id="bedLabel"></span>
+                <span class="bed-sub" id="bedSub"></span>
+              </span>
+              <span class="chev" aria-hidden="true"></span>
+            </button>
+            <div class="bed-panel" id="bedPanel" hidden>
+              <dl id="bedDetail"></dl>
+              <p class="note" data-i18n="bed.note">A bed is held once assigned.</p>
+            </div>
+
+            <section class="journey-head">
+              <h2 class="headline" data-i18n="journey.title">Where you are now</h2>
+              <div class="queue" id="queueBox">
+                <span class="queue-label" data-i18n="queue.label">Waiting number</span>
+                <span class="queue-num" id="queueNum"></span>
+              </div>
+            </section>
+
+            <div class="line-wrap">
+              <div class="arch" id="arch">
+                <div class="arch-wheel" id="archWheel">
+                  <svg class="arch-svg" width="1520" height="1520" viewBox="0 0 1520 1520" aria-hidden="true">
+                    <circle class="arch-track" cx="760" cy="760" r="760"></circle>
+                    <circle class="arch-fill" id="archFill" cx="760" cy="760" r="760"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="dial-core" id="dialCore"></div>
+            </div>
+          </main>
+
+          <!-- HELP -->
+          <main class="view scrolls" id="view-help" hidden>
+            <h2 class="headline" data-i18n="help.title">How to read this page</h2>
+            <div class="faq" id="faqList"></div>
+            <section class="sec">
+              <h3 class="sec-h" data-i18n="set.title">Your details</h3>
+              <div class="card">
+                <div class="field">
+                  <label for="phone" data-i18n="set.phone">Mobile number</label>
+                  <input id="phone" type="tel" inputmode="tel" placeholder="8123 4567">
+                  <p class="hintline" data-i18n="set.phoneHint">Used only on this device.</p>
+                </div>
+                <button class="switch" id="optIn" aria-pressed="true">
+                  <span class="sw" aria-hidden="true"></span>
+                  <span data-i18n="set.optin">Send me an alert at each milestone</span>
+                </button>
+                <div class="field">
+                  <label for="prefLang" data-i18n="set.lang">Preferred language</label>
+                  <select id="prefLang">
+                    <option value="en">English</option><option value="zh">中文</option>
+                    <option value="ms">Melayu</option><option value="ta">தமிழ்</option>
+                  </select>
+                </div>
+                <p class="hintline" id="setSaved" style="color:var(--done);font-weight:600"></p>
+              </div>
+            </section>
+            <div class="callout">
+              <h3 data-i18n="help.ctaTitle">Need a person?</h3>
+              <p data-i18n="help.ctaBody">Ask any nurse at the counter.</p>
+            </div>
+          </main>
+
+          <!-- STAFF -->
+          <main class="view scrolls" id="view-staff" hidden>
+            <h2 class="headline">Unified record</h2>
+            <p class="staff-note">Staff facing. IR-14 scopes translation to caregiver content, so this stays in English. Each field is tagged with the system it comes from today.</p>
+            <section class="sec"><div class="card"><dl id="staffRecord"></dl></div></section>
+            <section class="sec">
+              <h3 class="sec-h">Communication log</h3>
+              <div class="card" id="staffLog"></div>
+            </section>
+          </main>
+
+          <!-- FINANCE -->
+          <main class="view scrolls" id="view-finance" hidden>
+            <p class="eyebrow" data-i18n="fin.eyebrow">Finance</p>
+            <h2 class="headline hl-ic"><span class="fsec-ic" id="finIcon"></span><span id="finTitle">Ask</span></h2>
+            <div class="fsec" id="fs-ask">
+              <div class="chat-shell">
+                <div class="chat-log" id="chatLog" aria-live="polite"></div>
+                <div class="chips" id="chatChips"></div>
+                <form class="chat-bar" id="chatForm">
+                  <label for="chatInput" class="sr-only">Your question</label>
+                  <input id="chatInput" autocomplete="off" data-i18n-ph="fin.placeholder" placeholder="Type your question">
+                  <button class="send" type="submit" id="chatSend" data-i18n="fin.send">Send</button>
+                </form>
+              </div>
+            </div>
+
+            <div class="fsec" id="fs-wards" hidden>
+              <p class="fsec-sub" data-i18n="fin.wardsSub">Every class gets the same doctors and nurses. What changes is the room, and what you pay.</p>
+
+              <div class="seg" id="wardSeg" role="tablist">
+                <button class="seg-b" role="tab" data-wview="cards" aria-selected="true" data-i18n="fin.viewCards">Options</button>
+                <button class="seg-b" role="tab" data-wview="compare" aria-selected="false" data-i18n="fin.viewCompare">Compare</button>
+              </div>
+
+              <div id="wclassList"></div>
+              <div id="wcompare" hidden></div>
+
+              <div class="stay">
+                <span class="stay-l" data-i18n="fin.stay">Expected stay</span>
+                <div class="stepper">
+                  <button class="step-b" id="nightsDown" aria-label="Fewer nights">&#8722;</button>
+                  <b id="nightsVal">2 nights</b>
+                  <button class="step-b" id="nightsUp" aria-label="More nights">+</button>
+                </div>
+              </div>
+
+              <div class="est">
+                <div class="est-row"><span data-i18n="fin.daily">Room rate</span><b id="estDaily"></b></div>
+                <div class="est-row"><span data-i18n="fin.subsidy">Government subsidy</span><b id="estSub"></b></div>
+                <div class="est-row"><span data-i18n="fin.gross">Estimated bill</span><b id="estTotal"></b></div>
+                <div class="est-row"><span data-i18n="fin.plan">Your plan pays</span><b id="estPlan"></b></div>
+                <div class="est-row"><span data-i18n="fin.msave">MediSave can cover</span><b id="estMs"></b></div>
+                <div class="est-row est-big"><span data-i18n="fin.cash">You pay in cash</span><b id="estCash"></b></div>
+                <div class="est-row"><span data-i18n="fin.deposit">Deposit</span><b id="estDep"></b></div>
+              </div>
+
+              <div class="insight" id="wardInsight"></div>
+            </div>
+
+            <div class="fsec" id="fs-ins" hidden>
+              <div class="ins-combo" id="insCombo">
+                <label for="insInput" class="sr-only">Insurer or plan</label>
+                <svg class="ins-mag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.9-3.9"/></svg>
+                <input class="sel" id="insInput" type="text" autocomplete="off" role="combobox"
+                       aria-expanded="false" aria-controls="insList"
+                       data-i18n-ph="ins.search" placeholder="Search your insurer or plan">
+                <button type="button" class="ins-x" id="insClear" hidden data-i18n-al="ins.clear" aria-label="Clear">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+                <div class="ins-list" id="insList" hidden></div>
+              </div>
+              <div class="plan-tier" id="planTier"></div>
+              <div class="card" id="planCard"></div>
+
+              <h4 class="fsec-h" style="margin-top:14px" data-i18n="ins.riderTitle">Do you have a rider?</h4>
+              <div class="seg" id="riderSeg" role="tablist">
+                <button class="seg-b" role="tab" data-rider="none" aria-selected="true" data-i18n="ins.rider0">No rider</button>
+                <button class="seg-b" role="tab" data-rider="neu" aria-selected="false" data-i18n="ins.rider1">Rider</button>
+                <button class="seg-b" role="tab" data-rider="legacy" aria-selected="false" data-i18n="ins.rider2">Older rider</button>
+              </div>
+              <p class="hintline" data-i18n="ins.riderHint">A rider bought from 1 April 2026 cannot pay the deductible, and caps your share at $6,000 a year. A rider bought before 27 November 2025 still pays the deductible, capped at $3,000.</p>
+
+              <h4 class="fsec-h" style="margin-top:14px" data-i18n="ins.claimTitle">What this plan claims, by ward class</h4>
+              <div class="card" id="claimList"></div>
+              <p class="cmp-note" data-i18n="ins.claimNote">Indicative only. Deductibles, co-insurance and pro-ration follow your own policy wording, and the Administration Office confirms before you sign.</p>
+
+              <div class="log-line">
+                <span data-i18n="cov.log">Letter of guarantee</span>
+                <span class="pill dot" id="logPill" data-state="idle"><i></i><b id="logText"></b></span>
+              </div>
+            </div>
+
+            <div class="fsec" id="fs-docs" hidden>
+              <div class="card" id="docList"></div>
+            </div>
+
+            <div class="fsec" id="fs-support" hidden>
+              <div class="card">
+                <dl class="kv"><dt data-i18n="fin.office">Administration Office</dt><dd>6394 1234</dd></dl>
+                <dl class="kv"><dt data-i18n="fin.hours">Hours</dt><dd>Mon to Fri, 8.30 to 17.30</dd></dl>
+                <button class="btn" id="btnBook" data-i18n="fin.book">Request a call back</button>
+              </div>
+            </div>
+
+            <div class="fsec" id="fs-gloss" hidden>
+              <div class="faq" id="glossaryList"></div>
+            </div>
+          </main>
+
+          <div class="fademask" id="fadeMask" aria-hidden="true"></div>
+          <div class="scrollcue" id="scrollCue" hidden><span data-i18n="cue.more">More below</span><i></i></div>
+        </div>
+
+        <div class="toasts" id="toasts"></div>
+
+        <div class="controls" id="controls">
+          <button class="ctrl back" id="btnBack" aria-label="Back"><i aria-hidden="true"></i></button>
+          <span class="ctrl-hint" id="ctrlHint"></span>
+          <button class="ctrl primary" id="btnNext">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ============================================================
+   0. RESPONSIVE FIT
+   The prototype is a fixed 393x852 phone silhouette. To stay usable at
+   ANY screen size / phone resolution we scale the whole device down (never
+   up past 1) so it always fits inside the viewport with a small margin.
+   ============================================================ */
+(function(){
+  const device = document.getElementById('device');
+  if(!device) return;
+  const cs = getComputedStyle(document.documentElement);
+  const sw  = parseFloat(cs.getPropertyValue('--sw')) || 393;
+  const sh  = parseFloat(cs.getPropertyValue('--sh')) || 852;
+  const bez = parseFloat(cs.getPropertyValue('--bez')) || 13;
+  const DW = sw + bez*2;   // full device width  incl. bezel
+  const DH = sh + bez*2;   // full device height incl. bezel
+  function fitDevice(){
+    const isPhone = window.matchMedia('(max-width:640px)').matches;
+    // margin: breathing room around the frame
+    const mx = isPhone ? 12 : 48;
+    const my = isPhone ? 16 : 48;
+    const availW = window.innerWidth  - mx*2;
+    const availH = window.innerHeight - my*2;
+    let scale = Math.min(availW / DW, availH / DH, 1);
+    if(!isFinite(scale) || scale <= 0) scale = 1;
+    device.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  }
+  fitDevice();
+  window.addEventListener('resize', fitDevice, {passive:true});
+  window.addEventListener('orientationchange', ()=>setTimeout(fitDevice,150));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', fitDevice, {passive:true});
+  }
+})();
+
+/* ============================================================
+   1. CONFIG
+   ============================================================ */
+const STATUS_STEP_MS = 5000;
+const BED_DELAY_MS   = 5000;   /* pause before the bed card changes at all */
+const TOAST_MS       = 8000;
+const FOCUS          = 0.34;
+/* Set to a number of milliseconds to have the app advance on its own once a
+   step is finished, instead of waiting for Next. 0 keeps the pace manual,
+   which is what a moderated session usually wants. */
+const AUTO_ADVANCE_MS = 0;
+/* The waiting number is only handed out at the triage desk, so it stays
+   hidden until that stop and pops in when the caregiver reaches it. */
+const QUEUE_FROM     = 'triage';
+const BED            = {ward:'Ward 65', bed:'Bed 12', cls:'b2'};
+
+const STOPS = [
+  {id:'queue',    dur:'45',    u:'min', live:true, own:'nurse'},
+  {id:'triage',   dur:'5 to 10',  u:'min', live:true, own:'nurse'},
+  {id:'payment',  dur:'15 to 20', u:'min', live:true, act:true, own:'cashier'},
+  {id:'doctor',   dur:'3',     u:'hr',  live:true, own:'doctor'},
+  {id:'blood',    dur:'60 to 90', u:'min', live:true, own:'doctor'},
+  {id:'decision', dur:'10',    u:'min', act:true, own:'doctor'},
+  {id:'admit',    dur:'60 to 70', u:'min', live:true, act:true, own:'bedmgmt'}
+];
+
+/* Wayfinding shown once a stop's status turns ready. blink flashes the waiting
+   number once, and only where being called actually means walk somewhere. */
+const DIRECTIONS = {
+  queue:    {blink:false, move:true},
+  triage:   {blink:true,  move:true},
+  decision: {blink:false, move:false},  /* nothing to walk to, only to read */
+  admit:    {blink:false, move:true}
+};
+
+/* Room rates and room facilities are KKH published figures for
+   Types of Wards (kkh.com.sg/ward-stay/preparing-for-admission/types-of-wards).
+   B2 and C rates are already stated at the maximum subsidy level for citizens.
+   tier = the ward class an insurance plan must be entitled to before it claims
+   in full: 0 = B2/C, 1 = B1, 2 = Class A, 3 = private. */
+const WCLASS = [
+  {id:'a',  daily:765.50, dep:1500, free:3,  total:14, beds:1, air:1, bath:'own',    parent:'sofa', tier:2, sub:0,
+   amen:['ac','ownbath','wardrobe','sofa','phone','fridge','safe','tv','news']},
+  {id:'b1', daily:402.32, dep:1000, free:5,  total:22, beds:4, air:1, bath:'own',    parent:'fold', tier:1, sub:0,
+   amen:['ac','ownbath','cabinet','phone','tv','fold']},
+  {id:'b2', daily:79.80,  dep:500,  free:2,  total:30, beds:6, air:0, bath:'shared', parent:'fold', tier:0, sub:0.65,
+   amen:['vent','sharedbath','cabinet','fold']},
+  {id:'c',  daily:45.60,  dep:300,  free:11, total:40, beds:8, air:0, bath:'shared', parent:'fold', tier:0, sub:0.80,
+   amen:['vent','sharedbath','cabinet','fold']}
+];
+
+/* Indicative finance model. Everything below the room rate is an estimate
+   for the prototype, not a quote. */
+const TREAT_BASE  = 900;    /* ED workup, bloods, imaging — before subsidy */
+const TREAT_NIGHT = 260;    /* ward round, meds, IV, nursing per night      */
+const MEDISAVE_DAY = 550;   /* daily withdrawal limit for hospital charges */
+
+/* ============================================================
+   2. INSURANCE MODEL
+   Every figure below was taken from a primary source in August 2026.
+
+   MediShield Life Information Booklet, CPF Board, published 4 Aug 2026:
+     Table G  pro-ration factors, hospitalisation charges
+     Table I  pro-ration factors, surgical and implant charges
+     Table J  deductible, admissions on or after 1 Jun 2026
+     Table K  co-insurance, 10% / 5% / 3% by band
+     Table A  claim limits, $830 a day normal ward plus $800 a day for
+              the first two days, $200,000 a policy year
+   MOH, Comparison of Integrated Shield Plans, plan lists as at 1 Jun 2026,
+     plus the published Class B1 and Class A benefit tables for insurer
+     pro-ration factors, deductibles and policy year limits.
+   MOH media release, 26 Nov 2025: new IP rider design requirements
+     from 1 Apr 2026.
+   KKH, Types of Wards, for the room rates in WCLASS above.
+
+   Scope of the model: a Singapore Citizen child, age next birthday 80
+   and below, admitted to KKH. KKH is a restructured hospital, so every
+   ward on offer here is Class A, B1, B2 or C. That single fact decides
+   most of the answer, because no Shield plan is entitled to less than
+   B2/C, so nothing is pro-rated in the two subsidised classes.
+   ============================================================ */
+
+const MSHL = {
+  ded:  {c:2000, b2:2500, b1:2500, a:3500},   /* Table J, 80 and below */
+  pro:  {c:1.00, b2:1.00, b1:0.34, a:0.27},   /* Table G, citizen       */
+  proS: {c:1.00, b2:1.00, b1:0.35, a:0.25},   /* Table I, citizen       */
+  dayCap:830, day1Cap:800, year:200000
+};
+
+/* Table K. Bands run on the claimable amount and the deductible sits
+   inside the first band, which is why a $2,500 deductible leaves only
+   $2,500 of the first band exposed to the 10% rate. */
+const COINS = [[5000,0.10],[5000,0.05],[Infinity,0.03]];
+
+/* Rider modes. A rider bought on or after 1 Apr 2026 may no longer
+   cover the MOH minimum deductible, and the co-payment cap rose from
+   $3,000 to $6,000 a year. A rider bought before 27 Nov 2025 keeps the
+   old terms for as long as the insurer renews it. */
+const RIDER = {
+  none:   {ded:false, co:null, cap:Infinity},
+  neu:    {ded:false, co:0.05, cap:6000},
+  legacy: {ded:true,  co:0.05, cap:3000}
+};
+
+/* Plan records.
+   tier  0 = entitled to Class B2/C, 1 = Class B1, 2 = Class A, 3 = private
+   pro   insurer pro-ration factor by ward class, for a ward above the
+         entitlement. null means the plan carries no pro-ration factor
+         at all and instead pays to a fixed benefit schedule.
+   sched true when the plan pays to a fixed schedule rather than as
+         charged, so a large bill can outrun the limits.
+   shut  closed to new members, existing members may still renew.
+   cat   ip   Integrated Shield Plan or MediShield Life
+         ltc  long term care, pays a monthly cash payout, not a ward bill
+         lump pays a lump sum on a defined event, not a ward bill
+         outp outpatient cover only
+         fw   migrant worker inpatient cover
+         intl international or expatriate medical cover
+         grp  employer group cover
+         co   an insurer, not a plan
+*/
+const PLANS = [
+  {n:'MediShield Life', g:'CPF Board', cat:'ip', tier:0, mshl:true},
+
+  /* Basic plans, Class B2/C. MOH list as at 1 Jun 2026. */
+  {n:'Income IncomeShield Plan C', g:'Income', cat:'ip', tier:0, shut:true, sched:true, pro:null},
+  {n:'Income Enhanced IncomeShield C', g:'Income', cat:'ip', tier:0, shut:true, sched:true, pro:null},
+
+  /* Standard IPs, Class B1. Benefits are set by MOH and identical across
+     insurers: claim limits sized to fully cover nine in ten Class B1 bills,
+     so the plan pays to a schedule, not as charged. A pro-ration factor
+     applies above B1 and is stated in the benefit schedule. */
+  {n:'Income IncomeShield Standard Plan', g:'Income', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'AIA HealthShield Gold Max Standard Plan', g:'AIA', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'Great Eastern GREAT SupremeHealth STANDARD', g:'Great Eastern', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'Prudential PRUShield Standard Plan', g:'Prudential', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'Singlife Shield Standard Plan', g:'Singlife', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'HSBC Life Shield Standard Plan', g:'HSBC Life', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+  {n:'Raffles Shield Standard Plan', g:'Raffles Health Insurance', cat:'ip', tier:1, std:true, sched:true, proUnk:true},
+
+  /* Class B1 plans. Pro-ration at Class A read from the MOH Class B1 table. */
+  {n:'AIA HealthShield Gold Max C', g:'AIA', cat:'ip', tier:1, shut:true, sched:true, pro:null, lim:150000},
+  {n:'AIA HealthShield Gold Max B Lite', g:'AIA', cat:'ip', tier:1, pro:{a:0.80}, lim:300000},
+  {n:'Great Eastern GREAT SupremeHealth B', g:'Great Eastern', cat:'ip', tier:1, shut:true, sched:true, pro:{a:0.80}, lim:250000},
+  {n:'Great Eastern GREAT SupremeHealth B Plus', g:'Great Eastern', cat:'ip', tier:1, pro:{a:0.80}, lim:500000},
+  {n:'Income IncomeShield Plan B', g:'Income', cat:'ip', tier:1, shut:true, sched:true, pro:null, lim:150000},
+  {n:'Income Enhanced IncomeShield Basic', g:'Income', cat:'ip', tier:1, pro:{a:0.85}, lim:250000},
+  {n:'Prudential PRUShield B', g:'Prudential', cat:'ip', tier:1, shut:true, sched:true, pro:null, lim:120000},
+  {n:'Raffles Shield B', g:'Raffles Health Insurance', cat:'ip', tier:1, pro:{a:0.80}, lim:300000},
+  {n:'Singlife Shield Plan 3', g:'Singlife', cat:'ip', tier:1, pro:{a:0.85}, lim:500000},
+
+  /* Class A plans. The MOH Class A table lists pro-ration only for private
+     hospitals and private outpatient clinics, so nothing is pro-rated in
+     any KKH ward. */
+  {n:'AIA HealthShield Gold Max B', g:'AIA', cat:'ip', tier:2, lim:1000000},
+  {n:'Great Eastern GREAT SupremeHealth A Plus', g:'Great Eastern', cat:'ip', tier:2, lim:1000000},
+  {n:'HSBC Life Shield Plan B', g:'HSBC Life', cat:'ip', tier:2, lim:550000},
+  {n:'Income IncomeShield Plan A', g:'Income', cat:'ip', tier:2, shut:true, sched:true, pro:null, lim:200000},
+  {n:'Income Enhanced IncomeShield Advantage', g:'Income', cat:'ip', tier:2, lim:500000},
+  {n:'Prudential PRUShield A', g:'Prudential', cat:'ip', tier:2, shut:true, sched:true, pro:null, lim:150000},
+  {n:'Prudential PRUShield Plus', g:'Prudential', cat:'ip', tier:2, lim:1000000},
+  {n:'Raffles Shield A', g:'Raffles Health Insurance', cat:'ip', tier:2, lim:600000},
+  {n:'Singlife Shield Plan 2', g:'Singlife', cat:'ip', tier:2, lim:1000000},
+
+  /* Private hospital plans. Every KKH ward sits inside the entitlement. */
+  {n:'AIA HealthShield Gold Max A', g:'AIA', cat:'ip', tier:3, lim:2000000},
+  {n:'Great Eastern GREAT SupremeHealth A', g:'Great Eastern', cat:'ip', tier:3, shut:true},
+  {n:'Great Eastern GREAT SupremeHealth P Plus', g:'Great Eastern', cat:'ip', tier:3},
+  {n:'Great Eastern GREAT SupremeHealth P PRIME', g:'Great Eastern', cat:'ip', tier:3},
+  {n:'HSBC Life Shield Plan A', g:'HSBC Life', cat:'ip', tier:3},
+  {n:'Income IncomeShield Plan P', g:'Income', cat:'ip', tier:3, shut:true, sched:true, pro:null},
+  {n:'Income Enhanced IncomeShield Preferred', g:'Income', cat:'ip', tier:3},
+  {n:'Prudential PRUShield Premier', g:'Prudential', cat:'ip', tier:3},
+  {n:'Raffles Shield Private', g:'Raffles Health Insurance', cat:'ip', tier:3},
+  {n:'Singlife Shield Plan 1', g:'Singlife', cat:'ip', tier:3},
+  {n:'Singlife Shield Starter', g:'Singlife', cat:'ip', tier:3, shut:true},
+
+  /* Schemes that pay a monthly cash payout for severe disability. They do
+     not pay a hospital ward bill. */
+  {n:'CareShield Life', g:'CPF Board', cat:'ltc'},
+  {n:'ElderShield 300', g:'CPF Board', cat:'ltc'},
+  {n:'ElderShield 400', g:'CPF Board', cat:'ltc'},
+  {n:'MediSave Care', g:'CPF Board', cat:'ltc'},
+  {n:'Long-Term Care Insurance', g:'Various', cat:'ltc'},
+
+  /* Outpatient only. */
+  {n:'Primary Care Plan (PCP)', g:'MOH', cat:'outp'},
+  {n:'Primary Care Plan (PCP) for migrant workers', g:'MOH', cat:'outp'},
+  {n:'Group Outpatient Medical Insurance', g:'Employer', cat:'outp'},
+
+  /* Migrant worker and work injury cover. */
+  {n:'Foreign Worker Medical Insurance (FWMI)', g:'MOM required', cat:'fw'},
+  {n:'Work Injury Compensation Insurance (WICA)', g:'MOM required', cat:'wica'},
+
+  /* Lump sum or income replacement. Paid to you, not to the hospital. */
+  {n:'Critical Illness Insurance', g:'Various', cat:'lump'},
+  {n:'Early Critical Illness Insurance', g:'Various', cat:'lump'},
+  {n:'Personal Accident Insurance', g:'Various', cat:'lump'},
+  {n:'Disability Income Insurance', g:'Various', cat:'lump'},
+
+  /* Cover that does not reach a child’s emergency admission. */
+  {n:'Maternity Insurance', g:'Various', cat:'nope'},
+  {n:'Dental Insurance', g:'Various', cat:'nope'},
+
+  /* Employer and international cover. Terms are set by the policy, not by MOH. */
+  {n:'Group Employee Medical Insurance', g:'Employer', cat:'grp'},
+  {n:'Group Hospital and Surgical Insurance', g:'Employer', cat:'grp'},
+  {n:'Travel Insurance with Medical Coverage', g:'Various', cat:'intl'},
+  {n:'International Student Health Insurance', g:'Various', cat:'intl'},
+  {n:'Allianz Care', g:'International', cat:'intl'},
+  {n:'Cigna Healthcare Global', g:'International', cat:'intl'},
+  {n:'AXA Global Healthcare', g:'International', cat:'intl'},
+  {n:'Bupa Global', g:'International', cat:'intl'},
+  {n:'Aetna International', g:'International', cat:'intl'},
+  {n:'Now Health International', g:'International', cat:'intl'},
+  {n:'William Russell', g:'International', cat:'intl'},
+  {n:'APRIL International', g:'International', cat:'intl'},
+  {n:'Pacific Cross Insurance', g:'International', cat:'intl'},
+  {n:'Generali Global Health', g:'International', cat:'intl'},
+  {n:'Integra Global', g:'International', cat:'intl'},
+  {n:'GeoBlue', g:'International', cat:'intl'},
+  {n:'IMG Global', g:'International', cat:'intl'},
+
+  /* Insurers rather than plans. Picking one asks for the plan name. */
+  {n:'AIA Singapore Private Limited', g:'AIA', cat:'co', ip:true},
+  {n:'Great Eastern Life Assurance Company Limited', g:'Great Eastern', cat:'co', ip:true},
+  {n:'Prudential Assurance Company Singapore (Pte) Limited', g:'Prudential', cat:'co', ip:true},
+  {n:'Income Insurance Limited', g:'Income', cat:'co', ip:true},
+  {n:'Singapore Life Limited (Singlife)', g:'Singlife', cat:'co', ip:true},
+  {n:'HSBC Life (Singapore) Private Limited', g:'HSBC Life', cat:'co', ip:true},
+  {n:'Raffles Health Insurance Pte Ltd', g:'Raffles Health Insurance', cat:'co', ip:true},
+  {n:'Manulife (Singapore) Pte Ltd', g:'Manulife', cat:'co'},
+  {n:'Tokio Marine Life Insurance Singapore Ltd', g:'Tokio Marine', cat:'co'},
+  {n:'China Taiping Insurance (Singapore) Pte Ltd', g:'China Taiping', cat:'co'},
+  {n:'China Life Insurance (Singapore) Pte Ltd', g:'China Life', cat:'co'},
+  {n:'Etiqa Insurance Pte Ltd', g:'Etiqa', cat:'co'},
+  {n:'FWD Singapore Pte Ltd', g:'FWD', cat:'co'},
+  {n:'MSIG Insurance (Singapore) Pte Ltd', g:'MSIG', cat:'co'},
+  {n:'Sompo Insurance Singapore Pte Ltd', g:'Sompo', cat:'co'},
+  {n:'Liberty Insurance Pte Ltd', g:'Liberty', cat:'co'},
+  {n:'Chubb Insurance Singapore Limited', g:'Chubb', cat:'co'},
+  {n:'QBE Insurance (Singapore) Pte Ltd', g:'QBE', cat:'co'},
+  {n:'Allianz Insurance Singapore Pte Ltd', g:'Allianz', cat:'co'}
+];
+
+const INSURANCE_LIST = PLANS.map(p => p.n);
+const planOf = name => PLANS.find(p => p.n === name) || null;
+const planTier = name => { const p = planOf(name); return p && p.cat === 'ip' ? p.tier : 0; };
+
+/* Is this product able to pay any part of a KKH ward bill at all? */
+const paysWard = p => !p || p.cat === 'ip';
+
+/* Co-insurance under MediShield Life, banded. The deductible is inside
+   the first band, so only the part of that band above it is charged. */
+function coinsuranceOf(claimable, ded){
+  let owed = 0, lo = 0;
+  for(let i = 0; i < COINS.length; i++){
+    const hi = lo + COINS[i][0];
+    const seg = Math.min(claimable, hi) - Math.max(lo, ded);
+    if(seg > 0) owed += seg * COINS[i][1];
+    lo = hi;
+    if(lo >= claimable) break;
+  }
+  return owed;
+}
+
+/* MediShield Life claim limit for daily ward and treatment charges. */
+const wardCap = n => MSHL.dayCap * n + MSHL.day1Cap * Math.min(n, 2);
+
+/* Turn a claimable amount into a payout, given a deductible and a rider.
+   flat = true applies the Integrated Shield Plan's flat 10% co-insurance,
+   flat = false applies the banded MediShield Life scale. */
+function payout(claimable, ded, rider, flat){
+  const d = rider.ded ? 0 : ded;
+  if(claimable <= d) return {pay:0, ded:d, co:0, under:true};
+  const rest = claimable - d;
+  const co = rider.co !== null
+    ? Math.min(rest * rider.co, rider.cap)
+    : (flat ? rest * 0.10 : coinsuranceOf(claimable, d));
+  return {pay:Math.max(0, rest - co), ded:d, co:co, under:false};
+}
+
+const DOCS = ['nric','birthcert','consent','medisave','insurance'];
+
+/* ============================================================
+   2. TRANSLATIONS
+   stop.<id>.d entries are kept but not rendered. The stage
+   dropdowns are deliberately empty; to switch the copy back on,
+   restore the marked line in renderLine().
+   Non-English copy is a working draft for usability testing.
+   ============================================================ */
+const I18N = {
+en:{
+ 'nav.home':'Home','nav.finance':'Finance','nav.help':'Help','nav.staff':'Staff',
+ 'fin.eyebrow':'Finance',
+ 'proto':'Prototype: sample data, not live hospital information',
+ 'bed.none':'Ward not assigned yet','bed.noneSub':'Assigned once your admission is approved',
+ 'bed.assigned':'Your ward is confirmed','bed.ward':'Ward','bed.bed':'Bed number','bed.class':'Ward class',
+ 'bed.state':'Room status','bed.ready':'Expected ready','bed.avail':'tap for detail',
+ 'bed.note':'Your ward is held for your child once assigned. The room is prepared before you are called up.',
+ 'clean.occupied':'Previous patient leaving','clean.cleaning':'Being cleaned','clean.ready':'Ready for you',
+ 'queue.label':'Waiting number','queue.ahead':'{n} ahead of you','queue.next':'Your number is called',
+ 'line.now':'You are here','line.next':'Next',
+ 'line.done':'{n} steps done','line.done1':'1 step done',
+ 'line.showAll':'{n} more steps after this','line.showLess':'Show fewer steps',
+ 'toast.queueNum':'Waiting number {q} issued. Watch for it to be called.',
+ 'journey.title':'Where you are now',
+ 'pill.est':'Estimated time','unit.min':'min','unit.hr':'hr',
+ 'status.label':'Status','status.idle':'Idle','status.processing':'Processing','status.ready':'Ready',
+ 'state.inprog':'In progress','state.ready':'Ready for you',
+ 'dir.label':'Where to go next',
+ 'dir.queue':'Please proceed to Triage 2 when your number is called.',
+ 'dir.triage':'Head to Payment Counter 12.',
+ 'dir.decision':'Please check our Finance tab to familiarise yourself with your insurance cover and potential ward options available for you at this time.',
+ 'dir.admit':'Number {q}, please head back to the waiting area for a porter to come and collect you for your ward.',
+ 'ctrl.back':'Back','ctrl.next':'Next','ctrl.wait':'Waiting for this step','ctrl.ready':'Ready to continue','ctrl.end':'End of the journey',
+ 'act.onway':'I\u2019m on my way','act.arrived':'I\u2019ve arrived','act.done':'I\u2019m done here',
+ 'act.waiting':'We\u2019ll tell you the moment it is your turn',
+ 'act.called':'You are called. Tap when you set off for {d}.',
+ 'act.enroute':'On the way to {d}','act.finished':'Tap when this step is finished',
+ 'dest.queue':'Triage 2','dest.triage':'Payment Counter 12','dest.payment':'the waiting area',
+ 'dest.doctor':'the waiting area','dest.blood':'the waiting area','dest.decision':'Admissions',
+ 'dest.admit':'the waiting area',
+ 'toast.onway':'Thanks. The counter knows you are on your way',
+ 'note.started':'This step has started.','note.done':'This step is complete.',
+ 'note.action':'Something is needed from you.','note.bed':'A ward place has been set aside.',
+ 'own.counter':'Registration counter','own.nurse':'Triage nurse','own.cashier':'Payment counter',
+ 'own.doctor':'Doctor on duty','own.bedmgmt':'Ward management','own.business':'Administration Office',
+ 'own.admin':'Admissions admin','own.porter':'Porter team','own.wardnurse':'Ward nurse',
+ 'toast.queue':'Your queue number is called for triage','toast.triage':'Triage assessment complete','toast.payment':'Payment received',
+ 'toast.doctor':'Doctor is ready to see you','toast.blood':'Blood test results are ready',
+ 'toast.admit':'Your ward is ready, a porter is coming',
+ 'toast.bedready':'Your ward is ready','toast.callback':'Administration Office call back requested',
+ 'toast.log':'Insurance letter of guarantee approved',
+ 'stop.screen.t':'Arrival screening at the entrance',
+ 'stop.queue.t':'Queue number issued, wait for triage',
+ 'stop.triage.t':'Triage assessment by nurse',
+ 'stop.payment.t':'Payment at the counter',
+ 'stop.doctor.t':'Wait for doctor, then consultation',
+ 'stop.blood.t':'Blood test drawn, wait for results',
+ 'stop.decision.t':'Diagnosis given, admission decision, walk to admissions area',
+ 'stop.admit.t':'Admissions check in, wait for ward, porter takes you up',
+ 'stop.screen.d':'','stop.queue.d':'','stop.triage.d':'','stop.payment.d':'',
+ 'stop.doctor.d':'','stop.blood.d':'','stop.decision.d':'','stop.admit.d':'',
+ 'fin.btn':'Finance','fin.title':'Costs and documents','fin.ask':'Ask about anything',
+ 'fin.placeholder':'Type your question','fin.send':'Send',
+ 'fin.greet':'Ask me anything about the cost of your child\u2019s stay.','fin.offline':'Offline mode: stock answer',
+ 'chip.1':'What will this cost?','chip.2':'Can I use MediSave?','chip.3':'Do I pay a deposit?','chip.4':'What should I bring?',
+ 'fin.wards':'Ward options','fin.daily':'Room rate','fin.est':'Estimated bill','fin.deposit':'Deposit',
+ 'fin.free':'{n} of {m} available','fin.night':'per night','fin.avail':'Available now',
+ 'fin.wardsSub':'Every class gets the same doctors and nurses. What changes is the room, and what you pay.',
+ 'fin.viewCards':'Options','fin.viewCompare':'Compare',
+ 'cue.more':'More below',
+ 'jump.wards':'Wards','jump.ins':'Insurance','jump.ask':'Ask','jump.docs':'Documents','jump.support':'Get help','jump.gloss':'Terms',
+ 'fin.stay':'Expected stay','fin.nights':'{n} nights','fin.night1':'1 night',
+ 'fin.subsidy':'Government subsidy','fin.subYes':'Up to {p}%','fin.subNo':'Not eligible',
+ 'fin.gross':'Estimated bill','fin.plan':'Your plan pays','fin.msave':'MediSave covers',
+ 'fin.cash':'You pay in cash','fin.cashShort':'Cash',
+ 'wc.a.n':'Class A1','wc.a.f':'Single room, own bathroom, air conditioned',
+ 'wc.b1.n':'Class B1','wc.b1.f':'Four beds, own bathroom, air conditioned',
+ 'wc.b2.n':'Class B2','wc.b2.f':'Six beds, shared bathroom, naturally ventilated',
+ 'wc.c.n':'Class C','wc.c.f':'Eight beds, shared bathroom, naturally ventilated',
+ 'cmp.beds':'Beds in room','cmp.air':'Air conditioning','cmp.yes':'Yes','cmp.vent':'No',
+ 'cmp.bath':'Bathroom','cmp.own':'In room','cmp.shared':'Shared',
+ 'cmp.parent':'Parent sleeps','cmp.sofa':'Sofa bed','cmp.fold':'Fold-out','cmp.claim':'Your plan',
+ 'cmp.note':'Room rates are KKH published rates; B2 and C already include the maximum subsidy for citizens. Everything else is an estimate for this prototype, not a quote.',
+ 'amen.ac':'Air conditioned','amen.vent':'Naturally ventilated','amen.ownbath':'Own bathroom',
+ 'amen.sharedbath':'Shared bathroom','amen.wardrobe':'Wardrobe','amen.cabinet':'Bedside cabinet',
+ 'amen.sofa':'Sofa bed for one parent','amen.fold':'Foldable bed for one parent','amen.phone':'Telephone',
+ 'amen.fridge':'Mini fridge','amen.safe':'Personal safe','amen.tv':'Television','amen.news':'Daily newspaper',
+ 'cl.okS':'Full','cl.partS':'{p}% only','cl.noS':'Nothing',
+ 'cl.ok':'Claims in full','cl.part':'Pro-rated to {p}%','cl.no':'Pays nothing here',
+ 'cl.okWhy':'This class is inside what your plan is entitled to, so the claim is assessed on the whole bill.',
+ 'cl.partWhy':'This class is above your plan\u2019s entitlement, so only about {p}% of the bill can be claimed.',
+ 'cl.dedWhy':'The bill is below the {d} deductible for this class, so the plan pays nothing on this stay.',
+ 'cl.bothWhy':'Above your entitlement, so only about {p}% is claimable, and that falls under the {d} deductible, so nothing is paid.',
+ 'ins.rider':'My plan has a rider','ins.riderHint':'A rider bought from 1 April 2026 cannot pay the deductible, and caps your share at $6,000 a year. A rider bought before 27 November 2025 still pays the deductible, capped at $3,000.',
+ 'ins.claimTitle':'What this plan claims, by ward class',
+ 'ins.claimNote':'This changes with the length of stay, so adjust Expected stay in Wards. Figures follow the MediShield Life booklet of 4 August 2026 and the MOH plan tables of 1 June 2026, for a citizen child aged 80 and below at KKH. Your own policy wording governs, and the Administration Office confirms before you sign.',
+ 'ins.tier':'Entitled to','ins.tier0':'Class B2 / C','ins.tier1':'Class B1','ins.tier2':'Class A','ins.tier3':'Private',
+ 'ins.fromPlan':'read from your plan','ins.default':'MediShield Life only, until you pick a plan',
+ 'hi.up.t':'{cls} does not raise what your plan pays','hi.up.b':'Over {n} it costs about {gap} more in cash than Class B2. Class A1 and B1 carry no government subsidy, and a plan entitled to a lower class has its claim cut to about {p}% here, so you pay more without claiming more.',
+ 'hi.ded.t':'Your plan pays nothing on a stay this short','hi.ded.b':'The bill sits under the {d} deductible, so no Shield plan pays out. MediSave covers about {ms} of it, and the ward subsidy has already done most of the work.',
+ 'hi.ok.t':'This is the subsidised range','hi.ok.b':'Up to {p}% government subsidy is already in this rate, and your plan claims here in full. Moving up a class would end the subsidy.',
+ 'hi.backdate':'If you ask to move up later, the higher charges are backdated to day one.',
+ 'bed.compare':'Open Finance to compare the classes and what each one costs you.',
+ 'fin.checkIns':'Check your insurance','ins.none':'Select your insurer',
+ 'ins.search':'Search your insurer or plan','ins.nomatch':'No matching insurer or plan',
+ 'cl.underS':'Nothing','cl.under':'Pays nothing on this stay',
+ 'cl.pickPlan':'Pick the plan','cl.pickPlanS':'Which plan?',
+ 'ins.clear':'Clear the insurer',
+ 'cl.upto':'up to {v}','cl.least':'at least {v}',
+ 'cl.stillMshl':'MediShield Life still pays its part for citizens and PRs.',
+ 'cl.noWard':'Does not pay ward bills','cl.noWardS':'Not this',
+ 'cl.mshl':'MediShield Life only','cl.mshlS':'MSHL only',
+ 'cl.mshlWhy':'Only MediShield Life pays here, and for this class it is worked out on {p}% of the bill.',
+ 'cl.sched':'Claims to a set schedule','cl.schedS':'Scheduled',
+ 'cl.schedWhy':'This class is inside what your plan covers, but the plan pays a set amount per item rather than the whole bill.',
+ 'cl.unk':'Pro-rated, rate is in your schedule','cl.unkS':'Pro-rated',
+ 'cl.unkWhy':'This class is above what your plan covers. A pro-ration factor applies and the exact rate is printed in your own benefit schedule, so the Administration Office confirms it.',
+ 'cl.nopro':'No pro-ration, but capped','cl.noproS':'Capped',
+ 'cl.noproWhy':'This class is above what your plan covers, but this policy carries no pro-ration factor. It still pays only up to its own fixed limit for each item.',
+ 'why.cat-ltc':'This pays a monthly cash payout for severe long-term disability. It does not pay a hospital ward bill.',
+ 'why.cat-outp':'This covers outpatient visits at clinics. It does not pay for a ward stay.',
+ 'why.cat-fw':'Migrant worker inpatient cover is bought by an employer for the worker, so it does not cover a child.',
+ 'why.cat-wica':'Work injury compensation covers an injury at work, so it does not cover a child admitted here.',
+ 'why.cat-lump':'This pays a lump sum to you if a defined event happens. It is not paid to the hospital.',
+ 'why.cat-nope':'This cover does not reach a child admitted through the Children\u2019s Emergency.',
+ 'why.cat-grp':'Employer cover can pay a ward bill, but the ward it reaches and the limits are set by your employer\u2019s policy, not by MOH.',
+ 'why.cat-intl':'International cover can pay a ward bill, but the ward it reaches, any excess, and whether it bills the hospital direct are all set by your own policy.',
+ 'why.cat-co':'That is the insurer, not the plan. Pick the plan name to see what it claims.',
+ 'ins.tierNone':'Not a ward plan',
+ 'plan.pick':'Search above and pick your plan. If you only know the insurer, pick that and the plans will be listed.',
+ 'plan.coIP':'{g} sells Integrated Shield Plans. Pick the plan named on your policy.',
+ 'plan.coNo':'{g} does not sell Integrated Shield Plans. If you hold a hospital plan with them, bring the policy and the Administration Office will read it.',
+ 'plan.ward':'Covers up to','plan.wardNo':'No ward class',
+ 'plan.under':'Underneath','plan.underMshl':'MediShield Life still applies for citizens and PRs',
+ 'plan.ded':'You pay first, each policy year','plan.coins':'Your share after that',
+ 'plan.coinsMshl':'10% of the first $5,000, 5% of the next $5,000, 3% above that',
+ 'plan.coinsIP':'10%, or 5% with a rider',
+ 'plan.lim':'Most it pays in a year',
+ 'plan.sched':'This plan pays a set amount per item, not the whole bill.',
+ 'plan.std':'A Standard plan. MOH sets identical benefits across every insurer, sized to fully cover nine in ten Class B1 bills.',
+ 'plan.shut':'No longer sold to new members. Existing members can keep renewing.',
+ 'plan.shutS':'closed to new members',
+ 'ins.riderTitle':'Do you have a rider?',
+ 'ins.rider0':'No rider','ins.rider1':'Rider','ins.rider2':'Older rider',
+ 'cov.log':'Letter of guarantee','cov.notsub':'Not submitted','cov.submitted':'Submitted','cov.approved':'Approved',
+ 'fin.docsTitle':'Document Checklist',
+ 'doc.nric':'Your NRIC or FIN','doc.birthcert':'Child\u2019s birth certificate',
+ 'doc.consent':'Signed admission consent','doc.medisave':'MediSave authorisation','doc.insurance':'Insurance policy details',
+ 'fin.support':'Need more help','fin.office':'Administration Office','fin.hours':'Hours',
+ 'fin.book':'Request a call back','fin.booked':'Requested','fin.glossary':'Terms explained',
+ 'gl.1.t':'Deposit','gl.1.d':'Taken at admission and set against your final bill. Not an extra charge.',
+ 'gl.2.t':'Ward class','gl.2.d':'The room type. It sets both comfort and how much subsidy applies.',
+ 'gl.3.t':'Means testing','gl.3.d':'A household income check used to work out your subsidy rate.',
+ 'gl.4.t':'MediSave authorisation','gl.4.d':'The form letting the hospital draw from your MediSave account.',
+ 'gl.5.t':'Letter of guarantee','gl.5.d':'Your insurer confirming it will pay part of the bill directly.',
+ 'gl.6.t':'Upgrade','gl.6.d':'Moving to a higher ward class. Charges are backdated to day one, except the room fee, which is charged from the day you move.',
+ 'gl.7.t':'Pro-ration','gl.7.d':'If you stay in a class above what your plan is entitled to, the insurer first cuts the bill it will look at, often to around a third, and assesses the claim on that.',
+ 'gl.8.t':'Deductible','gl.8.d':'The first slice of the yearly bill you pay yourself before a Shield plan pays anything. It is higher for higher ward classes.',
+ 'gl.9.t':'Rider','gl.9.d':'An add-on to a Shield plan that covers the deductible and most of the co-payment. Without one, a short stay often claims nothing.',
+ 'gl.10.t':'MediShield Life','gl.10.d':'The basic national plan. It is sized for Class B2 and C bills, so it does not pay more just because you choose a higher class.',
+ 'help.eyebrow':'Help','help.title':'How to read this page',
+ 'help.ctaTitle':'Need a person, not a page?','help.ctaBody':'Ask any nurse at the counter. If your child\u2019s condition changes, tell staff straight away.',
+ 'set.title':'Your details','set.phone':'Mobile number','set.phoneHint':'Used only on this device.',
+ 'set.optin':'Send me an alert at each milestone','set.lang':'Preferred language','set.saved':'Saved',
+ 'faq.1.q':'What do the stops mean?','faq.1.a':'The line shows every step from arriving to reaching your ward. The large amber circle is where you are now and it holds its position. Scroll the line to look ahead or back.',
+ 'faq.2.q':'What does the ward card tell me?','faq.2.a':'Before a ward is assigned it shows nothing is held. Once assigned it names the ward and bed number, whether the room is still being prepared, and when it should be ready.',
+ 'faq.3.q':'Why is the wait longer than the times shown?','faq.3.a':'The times are typical, not promised. Emergencies arriving after you are seen first, and ward steps stretch when the hospital is full.'
+},
+zh:{
+ 'nav.home':'主页','nav.finance':'费用','nav.help':'帮助','nav.staff':'员工',
+ 'fin.eyebrow':'费用','dir.label':'接下来去哪里',
+ 'dir.queue':'叫到您的号码时，请前往分诊台 2。',
+ 'dir.triage':'请前往缴费柜台 12。',
+ 'dir.decision':'请查看「费用」页，先了解您的保险保障与目前可选的病房等级。',
+ 'dir.admit':'{q} 号，请回到等候区，将有护工前来接您前往病房。',
+ 'ins.search':'搜索您的保险公司或保单','ins.nomatch':'找不到相符的保险公司或保单',
+ 'cl.underS':'不赔付','cl.under':'这次住院不赔付',
+ 'cl.pickPlan':'请选择保单','cl.pickPlanS':'哪个保单？',
+ 'ins.clear':'清除保险公司',
+ 'cl.upto':'最高 {v}','cl.least':'至少 {v}',
+ 'cl.stillMshl':'公民与永久居民仍由终身健保承担其中一部分。',
+ 'cl.noWard':'不支付住院病房账单','cl.noWardS':'不适用',
+ 'cl.mshl':'仅终身健保赔付','cl.mshlS':'仅终身健保',
+ 'cl.mshlWhy':'此等级只有终身健保赔付，且按账单的 {p}% 计算。',
+ 'cl.sched':'按固定标准赔付','cl.schedS':'固定标准',
+ 'cl.schedWhy':'此等级在保障范围内，但保单按每个项目的固定金额赔付，而非整笔账单。',
+ 'cl.unk':'按比例赔付，比例见您的保单','cl.unkS':'按比例',
+ 'cl.unkWhy':'此等级高于您保单的保障范围，须按比例赔付。确切比例载于您的保障表，由行政办公室确认。',
+ 'cl.nopro':'不按比例减，但有上限','cl.noproS':'有上限',
+ 'cl.noproWhy':'此等级高于您保单的保障范围，但此保单没有按比例条款，仍只按每个项目的固定上限赔付。',
+ 'why.cat-ltc':'这项计划为严重长期失能提供每月现金给付，不支付住院病房账单。',
+ 'why.cat-outp':'这项计划保障诊所门诊，不支付住院费用。',
+ 'why.cat-wica':'工伤赔偿保障工作时受的伤，不涵盖在此入院的孩子。',
+ 'why.cat-fw':'客工住院保险由雇主为客工购买，不涵盖孩子。',
+ 'why.cat-lump':'这项计划在指定事件发生时向您一次性给付，款项不付给医院。',
+ 'why.cat-nope':'这项保障不涵盖经儿童急诊入院的孩子。',
+ 'why.cat-grp':'雇主团体保险可支付病房账单，但可保障的病房等级与上限由雇主保单决定，而非卫生部。',
+ 'why.cat-intl':'国际保险可支付病房账单，但可保障的病房等级、自付额，以及是否直接与医院结算，均由您的保单决定。',
+ 'why.cat-co':'这是保险公司，不是保单。请选择保单名称以查看理赔情况。',
+ 'ins.tierNone':'非病房保单',
+ 'plan.pick':'请在上方搜索并选择您的保单。若只知道保险公司，选择它即可列出旗下保单。',
+ 'plan.coIP':'{g} 有售综合健保双全计划，请选择保单上的计划名称。',
+ 'plan.coNo':'{g} 不售综合健保双全计划。若您持有该公司的住院保单，请携带保单，行政办公室会为您查阅。',
+ 'plan.ward':'最高保障至','plan.wardNo':'不涵盖病房等级',
+ 'plan.under':'底层保障','plan.underMshl':'公民与永久居民仍有终身健保',
+ 'plan.ded':'每保单年度先自付','plan.coins':'其后您的分担比例',
+ 'plan.coinsMshl':'首 $5,000 的 10%、次 $5,000 的 5%、其余 3%',
+ 'plan.coinsIP':'10%，附加险可降至 5%',
+ 'plan.lim':'每年最高赔付',
+ 'plan.sched':'此保单按每个项目的固定金额赔付，而非整笔账单。',
+ 'plan.std':'标准计划。卫生部规定各家保险公司的保障完全相同，足以全额支付十分之九的 B1 级账单。',
+ 'plan.shut':'已停售给新客户，现有客户可继续续保。',
+ 'plan.shutS':'已停售',
+ 'ins.riderTitle':'您有附加险吗？',
+ 'ins.rider0':'没有','ins.rider1':'有附加险','ins.rider2':'旧版附加险',
+ 'proto':'原型展示：示范数据，非医院实时信息',
+ 'bed.none':'尚未安排病房','bed.noneSub':'入院批准后才会安排',
+ 'bed.assigned':'病房已为您确认','bed.ward':'病房','bed.bed':'床号','bed.class':'病房等级',
+ 'bed.state':'房间状态','bed.ready':'预计可用','bed.avail':'点击查看详情',
+ 'bed.note':'病房一经安排即为您的孩子保留。上楼前会先完成房间整理。',
+ 'clean.occupied':'前一位病人正在离开','clean.cleaning':'清洁中','clean.ready':'已可入住',
+ 'queue.label':'等候号码','queue.ahead':'前面还有 {n} 位','queue.next':'已叫到您的号码',
+ 'line.now':'您在这里','line.next':'下一步',
+ 'line.done':'已完成 {n} 步','line.done1':'已完成 1 步',
+ 'line.showAll':'之后还有 {n} 个步骤','line.showLess':'收起步骤',
+ 'toast.queueNum':'已发出等候号码 {q}，请留意叫号。',
+ 'journey.title':'您目前的位置',
+ 'pill.est':'预计时间','unit.min':'分钟','unit.hr':'小时',
+ 'status.label':'状态','status.idle':'待处理','status.processing':'处理中','status.ready':'已就绪',
+ 'state.inprog':'进行中','state.ready':'可以前往',
+ 'ctrl.back':'上一步','ctrl.next':'下一步','ctrl.wait':'请等待此步骤完成','ctrl.ready':'可以继续','ctrl.end':'流程结束',
+ 'act.onway':'我正前往','act.arrived':'我已到达','act.done':'这一步已完成',
+ 'act.waiting':'轮到您时我们会立即通知',
+ 'act.called':'已叫到您。前往{d}时请点击。',
+ 'act.enroute':'正前往{d}','act.finished':'完成这一步后请点击',
+ 'dest.queue':'分诊台 2','dest.triage':'缴费柜台 12','dest.payment':'等候区',
+ 'dest.doctor':'等候区','dest.blood':'等候区','dest.decision':'入院处',
+ 'dest.admit':'等候区',
+ 'toast.onway':'已通知柜台您正在前往',
+ 'note.started':'此步骤已开始。','note.done':'此步骤已完成。',
+ 'note.action':'此步骤需要您配合。','note.bed':'已为您保留病房。',
+ 'own.counter':'登记柜台','own.nurse':'分诊护士','own.cashier':'缴费柜台',
+ 'own.doctor':'值班医生','own.bedmgmt':'病房管理组','own.business':'行政办公室',
+ 'own.admin':'入院行政组','own.porter':'护工组','own.wardnurse':'病房护士',
+ 'toast.queue':'已叫到您的号码，请前往分诊','toast.payment':'已收到付款',
+ 'toast.doctor':'医生已可为您看诊','toast.blood':'血液检验报告已出',
+ 'toast.admit':'病房已准备好，护工正在前来',
+ 'toast.bedready':'您的病房已准备好','toast.callback':'已请求 行政办公室来电',
+ 'toast.log':'保险担保书已批准',
+ 'stop.screen.t':'入口处到达筛查',
+ 'stop.queue.t':'领取号码，等候分诊',
+ 'stop.triage.t':'护士分诊评估',
+ 'stop.payment.t':'柜台缴费',
+ 'stop.doctor.t':'等候医生，然后看诊',
+ 'stop.blood.t':'抽血检验，等候报告',
+ 'stop.decision.t':'告知诊断，决定入院，步行至入院处',
+ 'stop.admit.t':'入院登记，等候病房，护工送您上楼',
+ 'stop.screen.d':'','stop.queue.d':'','stop.triage.d':'','stop.payment.d':'',
+ 'stop.doctor.d':'','stop.blood.d':'','stop.decision.d':'','stop.admit.d':'',
+ 'fin.btn':'费用','fin.title':'费用与文件','fin.ask':'有任何疑问请提出',
+ 'fin.placeholder':'输入您的问题','fin.send':'发送',
+ 'fin.greet':'关于住院费用的任何问题都可以问我。','fin.offline':'离线模式：预设答案',
+ 'chip.1':'大概要多少钱？','chip.2':'可以用保健储蓄吗？','chip.3':'需要付订金吗？','chip.4':'需要带什么？',
+ 'fin.wards':'病房选择','fin.daily':'房费','fin.est':'预估账单','fin.deposit':'订金',
+ 'fin.free':'可用 {n}／{m}','fin.night':'每晚','fin.avail':'目前可用',
+ 'fin.wardsSub':'各等级的医生与护士完全相同，不同的只是房间，以及您要付的钱。',
+ 'fin.viewCards':'各等级','fin.viewCompare':'比较',
+ 'cue.more':'下方还有内容',
+ 'jump.wards':'病房','jump.ins':'保险','jump.ask':'提问','jump.docs':'文件','jump.support':'求助','jump.gloss':'名词',
+ 'fin.stay':'预计住院','fin.nights':'{n} 晚','fin.night1':'1 晚',
+ 'fin.subsidy':'政府津贴','fin.subYes':'已适用，最高 {p}%','fin.subNo':'不符合资格',
+ 'fin.gross':'预估账单','fin.plan':'保险预计支付','fin.msave':'保健储蓄可支付',
+ 'fin.cash':'需自付现金','fin.cashShort':'自付',
+ 'wc.a.n':'A1 级病房','wc.a.f':'单人房、独立卫浴、冷气',
+ 'wc.b1.n':'B1 级病房','wc.b1.f':'四人房、独立卫浴、冷气',
+ 'wc.b2.n':'B2 级病房','wc.b2.f':'六人房、共用卫浴、自然通风',
+ 'wc.c.n':'C 级病房','wc.c.f':'八人房、共用卫浴、自然通风',
+ 'cmp.beds':'房内床位','cmp.air':'冷气','cmp.yes':'有','cmp.vent':'自然通风',
+ 'cmp.bath':'卫浴','cmp.own':'房内独立','cmp.shared':'共用',
+ 'cmp.parent':'家长陪宿','cmp.sofa':'沙发床、免费','cmp.fold':'折叠床','cmp.claim':'您的保险',
+ 'cmp.note':'房费为 KKH 公布的费率；B2 与 C 级已包含公民的最高津贴。其余数字为原型示范的估算，并非正式报价。',
+ 'amen.ac':'冷气','amen.vent':'自然通风','amen.ownbath':'独立卫浴',
+ 'amen.sharedbath':'共用卫浴','amen.wardrobe':'衣柜','amen.cabinet':'床边柜',
+ 'amen.sofa':'沙发床（一位家长）','amen.fold':'折叠床（一位家长）','amen.phone':'电话',
+ 'amen.fridge':'小冰箱','amen.safe':'保险箱','amen.tv':'电视','amen.news':'每日报纸',
+ 'cl.okS':'全额','cl.partS':'仅 {p}%','cl.noS':'不赔付',
+ 'cl.ok':'可全额理赔','cl.part':'按比例减至 {p}%','cl.no':'此等级不赔付',
+ 'cl.okWhy':'此等级在您保单的保障范围内，理赔按整笔账单计算。',
+ 'cl.partWhy':'此等级高于您保单的保障范围，仅约 {p}% 的账单可纳入理赔。',
+ 'cl.dedWhy':'账单低于此等级的自付额 {d}，因此保险在这次住院不赔付。',
+ 'cl.bothWhy':'高于保障范围，仅约 {p}% 可理赔，而该金额又低于 {d} 的自付额，因此不赔付。',
+ 'ins.rider':'我的保单有附加险','ins.riderHint':'2026 年 4 月 1 日起购买的附加险不能支付自付额，您每年的分担上限为 $6,000。2025 年 11 月 27 日之前购买的旧附加险仍可支付自付额，上限为 $3,000。',
+ 'ins.claimTitle':'此保单在各病房等级的理赔情况',
+ 'ins.claimNote':'结果会随住院天数改变，请调整上方的「预计住院」。仅供参考：自付额、共同保险与按比例赔付以您的保单条款为准，最终由 行政办公室确认。',
+ 'ins.tier':'保障等级','ins.tier0':'B2／C 级','ins.tier1':'B1 级','ins.tier2':'A 级','ins.tier3':'私立医院',
+ 'ins.fromPlan':'依您所选保单判断','ins.default':'未选保单前，仅按终身健保计算',
+ 'hi.up.t':'选择 {cls} 并不会让保险多赔','hi.up.b':'住 {n}，自付现金约比 B2 级多 {gap}。A1 与 B1 级没有政府津贴，而保障等级较低的保单在此仅约 {p}% 可理赔，付得更多，赔得并不多。',
+ 'hi.ded.t':'住院天数太短，保险不会赔付','hi.ded.b':'账单低于 {d} 的自付额，因此健保计划不赔付。保健储蓄约可支付 {ms}，其余大部分已由病房津贴承担。',
+ 'hi.ok.t':'这是享有津贴的等级','hi.ok.b':'此房费已含最高 {p}% 的政府津贴，且您的保单在此可全额理赔。升级病房等级将失去津贴。',
+ 'hi.backdate':'若之后申请升级，较高的费用会追溯至入院第一天计算。',
+ 'bed.compare':'请前往「费用」比较各等级及其实际花费。',
+ 'fin.checkIns':'查看您的保险','ins.none':'请选择保险公司',
+ 'cov.log':'担保书','cov.notsub':'尚未提交','cov.submitted':'已提交','cov.approved':'已批准',
+ 'fin.docsTitle':'文件清单',
+ 'doc.nric':'您的身份证或工作准证','doc.birthcert':'孩子的出生证明',
+ 'doc.consent':'已签署的入院同意书','doc.medisave':'保健储蓄授权书','doc.insurance':'保险资料',
+ 'fin.support':'需要更多协助','fin.office':'行政办公室','fin.hours':'办公时间',
+ 'fin.book':'请求来电联系','fin.booked':'已提交','fin.glossary':'名词解释',
+ 'gl.1.t':'订金','gl.1.d':'入院时收取，会从最终账单中扣除，并非额外费用。',
+ 'gl.2.t':'病房等级','gl.2.d':'房型。它同时决定舒适度与可获得的津贴。',
+ 'gl.3.t':'收入审核','gl.3.d':'依家庭收入核算津贴比例的检查。',
+ 'gl.4.t':'保健储蓄授权','gl.4.d':'授权医院从您的保健储蓄户头扣款的表格。',
+ 'gl.5.t':'担保书','gl.5.d':'保险公司确认会直接支付部分账单的信函。',
+ 'gl.6.t':'升级病房','gl.6.d':'转入更高等级的病房。费用会追溯至第一天计算，房费则从转入当天起算。',
+ 'gl.7.t':'按比例赔付','gl.7.d':'若住进高于保单保障等级的病房，保险公司会先把纳入计算的账单调低（常见约三分之一），再据此理赔。',
+ 'gl.8.t':'自付额','gl.8.d':'健保计划赔付前，您每年需自行承担的第一笔金额。病房等级越高，自付额越高。',
+ 'gl.9.t':'附加险','gl.9.d':'健保计划的附加保障，可支付自付额与大部分共同保险。没有附加险时，短期住院往往无法获赔。',
+ 'gl.10.t':'终身健保','gl.10.d':'国家基本保险。其额度以 B2 与 C 级账单为基准，不会因您选择更高等级病房而增加赔付。',
+ 'help.eyebrow':'帮助','help.title':'如何使用本页',
+ 'help.ctaTitle':'需要找人帮忙？','help.ctaBody':'可向柜台的任何护士询问。若孩子情况有变，请立即告知工作人员。',
+ 'set.title':'您的资料','set.phone':'手机号码','set.phoneHint':'仅用于本装置。',
+ 'set.optin':'每个步骤有进展时通知我','set.lang':'偏好语言','set.saved':'已保存',
+ 'faq.1.q':'这些站点代表什么？','faq.1.a':'这条线显示从抵达到入住病房的每个步骤。放大的黄色圆圈是您目前的位置，位置固定不动。滑动时间线即可查看前后步骤。',
+ 'faq.2.q':'病房卡显示什么？','faq.2.a':'安排病房前显示尚未保留。安排后会显示病房与床号、房间是否仍在整理，以及预计可用时间。',
+ 'faq.3.q':'为什么等候时间比显示的长？','faq.3.a':'所显示的是一般情况，并非承诺。比您晚到的紧急病例会先处理，医院满载时病房步骤也会延长。'
+},
+ms:{
+ 'nav.home':'Utama','nav.finance':'Kewangan','nav.help':'Bantuan','nav.staff':'Kakitangan',
+ 'fin.eyebrow':'Kewangan','dir.label':'Ke mana seterusnya',
+ 'dir.queue':'Sila ke Triaj 2 apabila nombor anda dipanggil.',
+ 'dir.triage':'Sila ke Kaunter Bayaran 12.',
+ 'dir.decision':'Sila semak tab Kewangan untuk memahami perlindungan insurans anda dan pilihan wad yang ada buat masa ini.',
+ 'dir.admit':'Nombor {q}, sila kembali ke ruang menunggu; pengangkut akan datang membawa anda ke wad.',
+ 'ins.search':'Cari penanggung insurans atau pelan anda','ins.nomatch':'Tiada penanggung insurans atau pelan sepadan',
+ 'cl.underS':'Tiada','cl.under':'Tiada bayaran bagi tinggal ini',
+ 'cl.pickPlan':'Pilih pelan','cl.pickPlanS':'Pelan mana?',
+ 'ins.clear':'Kosongkan penanggung insurans',
+ 'cl.upto':'sehingga {v}','cl.least':'sekurang-kurangnya {v}',
+ 'cl.stillMshl':'MediShield Life tetap membayar bahagiannya bagi warganegara dan PR.',
+ 'cl.noWard':'Tidak membayar bil wad','cl.noWardS':'Bukan ini',
+ 'cl.mshl':'MediShield Life sahaja','cl.mshlS':'MSHL sahaja',
+ 'cl.mshlWhy':'Hanya MediShield Life membayar di sini, dan bagi kelas ini ia dikira atas {p}% daripada bil.',
+ 'cl.sched':'Bayaran mengikut jadual tetap','cl.schedS':'Berjadual',
+ 'cl.schedWhy':'Kelas ini dalam kelayakan pelan anda, tetapi pelan membayar jumlah tetap bagi setiap item, bukan keseluruhan bil.',
+ 'cl.unk':'Dikadarkan, kadar dalam jadual anda','cl.unkS':'Dikadarkan',
+ 'cl.unkWhy':'Kelas ini melebihi kelayakan pelan anda. Faktor pengadaran dikenakan dan kadar tepatnya tercatat dalam jadual manfaat anda, jadi Pejabat Pentadbiran akan mengesahkannya.',
+ 'cl.nopro':'Tiada pengadaran, tetapi ada had','cl.noproS':'Berhad',
+ 'cl.noproWhy':'Kelas ini melebihi kelayakan pelan anda, tetapi polisi ini tiada faktor pengadaran. Ia tetap membayar hanya sehingga had tetapnya bagi setiap item.',
+ 'why.cat-ltc':'Ini membayar wang tunai bulanan bagi hilang upaya jangka panjang yang teruk. Ia tidak membayar bil wad hospital.',
+ 'why.cat-outp':'Ini melindungi lawatan pesakit luar di klinik. Ia tidak membayar penginapan di wad.',
+ 'why.cat-fw':'Insurans pesakit dalam pekerja asing dibeli oleh majikan untuk pekerja, jadi ia tidak melindungi seorang kanak-kanak.',
+ 'why.cat-wica':'Pampasan kecederaan pekerjaan melindungi kecederaan di tempat kerja, jadi ia tidak melindungi kanak-kanak yang dimasukkan di sini.',
+ 'why.cat-lump':'Ini membayar sekali gus kepada anda jika berlaku peristiwa yang ditetapkan. Ia tidak dibayar kepada hospital.',
+ 'why.cat-nope':'Perlindungan ini tidak sampai kepada kanak-kanak yang dimasukkan melalui Kecemasan Kanak-kanak.',
+ 'why.cat-grp':'Perlindungan majikan boleh membayar bil wad, tetapi kelas wad dan hadnya ditetapkan oleh polisi majikan anda, bukan oleh MOH.',
+ 'why.cat-intl':'Perlindungan antarabangsa boleh membayar bil wad, tetapi kelas wad, lebihan, dan sama ada ia membil hospital secara terus semuanya ditetapkan oleh polisi anda.',
+ 'why.cat-co':'Itu penanggung insurans, bukan pelan. Pilih nama pelan untuk melihat tuntutannya.',
+ 'ins.tierNone':'Bukan pelan wad',
+ 'plan.pick':'Cari di atas dan pilih pelan anda. Jika anda hanya tahu penanggung insurans, pilihnya dan pelan akan disenaraikan.',
+ 'plan.coIP':'{g} menjual Integrated Shield Plan. Pilih pelan yang dinamakan dalam polisi anda.',
+ 'plan.coNo':'{g} tidak menjual Integrated Shield Plan. Jika anda memegang pelan hospital dengan mereka, bawa polisi itu dan Pejabat Pentadbiran akan membacanya.',
+ 'plan.ward':'Melindungi sehingga','plan.wardNo':'Tiada kelas wad',
+ 'plan.under':'Di bawahnya','plan.underMshl':'MediShield Life tetap terpakai bagi warganegara dan PR',
+ 'plan.ded':'Anda bayar dahulu, setiap tahun polisi','plan.coins':'Bahagian anda selepas itu',
+ 'plan.coinsMshl':'10% bagi $5,000 pertama, 5% bagi $5,000 berikutnya, 3% selepas itu',
+ 'plan.coinsIP':'10%, atau 5% dengan rider',
+ 'plan.lim':'Bayaran maksimum setahun',
+ 'plan.sched':'Pelan ini membayar jumlah tetap bagi setiap item, bukan keseluruhan bil.',
+ 'plan.std':'Pelan Standard. MOH menetapkan manfaat yang sama bagi setiap penanggung insurans, cukup untuk menanggung sepenuhnya sembilan daripada sepuluh bil Kelas B1.',
+ 'plan.shut':'Tidak lagi dijual kepada ahli baharu. Ahli sedia ada boleh terus memperbaharui.',
+ 'plan.shutS':'ditutup kepada ahli baharu',
+ 'ins.riderTitle':'Adakah anda ada rider?',
+ 'ins.rider0':'Tiada rider','ins.rider1':'Rider','ins.rider2':'Rider lama',
+ 'proto':'Prototaip: data contoh, bukan maklumat hospital sebenar',
+ 'bed.none':'Wad belum ditetapkan','bed.noneSub':'Ditetapkan setelah kemasukan diluluskan',
+ 'bed.assigned':'Wad anda telah disahkan','bed.ward':'Wad','bed.bed':'Nombor katil','bed.class':'Kelas wad',
+ 'bed.state':'Status bilik','bed.ready':'Dijangka sedia','bed.avail':'ketik untuk butiran',
+ 'bed.note':'Wad anda ditempah sebaik ia ditetapkan. Bilik disediakan sebelum anda dipanggil naik.',
+ 'clean.occupied':'Pesakit sebelumnya sedang keluar','clean.cleaning':'Sedang dibersihkan','clean.ready':'Sedia untuk anda',
+ 'queue.label':'Nombor menunggu','queue.ahead':'{n} di hadapan anda','queue.next':'Nombor anda dipanggil',
+ 'line.now':'Anda di sini','line.next':'Seterusnya',
+ 'line.done':'{n} langkah selesai','line.done1':'1 langkah selesai',
+ 'line.showAll':'{n} langkah lagi selepas ini','line.showLess':'Tunjuk kurang',
+ 'toast.queueNum':'Nombor menunggu {q} dikeluarkan. Perhatikan panggilan.',
+ 'journey.title':'Di mana anda sekarang',
+ 'pill.est':'Anggaran masa','unit.min':'minit','unit.hr':'jam',
+ 'status.label':'Status','status.idle':'Menunggu','status.processing':'Sedang diproses','status.ready':'Sedia',
+ 'state.inprog':'Sedang berjalan','state.ready':'Sedia untuk anda',
+ 'ctrl.back':'Kembali','ctrl.next':'Seterusnya','ctrl.wait':'Menunggu langkah ini','ctrl.ready':'Boleh diteruskan','ctrl.end':'Penghujung perjalanan',
+ 'act.onway':'Saya dalam perjalanan','act.arrived':'Saya sudah tiba','act.done':'Saya sudah selesai',
+ 'act.waiting':'Kami akan beritahu sebaik tiba giliran anda',
+ 'act.called':'Anda dipanggil. Ketik apabila anda bertolak ke {d}.',
+ 'act.enroute':'Dalam perjalanan ke {d}','act.finished':'Ketik apabila langkah ini selesai',
+ 'dest.queue':'Triaj 2','dest.triage':'Kaunter Bayaran 12','dest.payment':'ruang menunggu',
+ 'dest.doctor':'ruang menunggu','dest.blood':'ruang menunggu','dest.decision':'Kemasukan',
+ 'dest.admit':'ruang menunggu',
+ 'toast.onway':'Terima kasih. Kaunter tahu anda dalam perjalanan',
+ 'note.started':'Langkah ini telah bermula.','note.done':'Langkah ini telah selesai.',
+ 'note.action':'Sesuatu diperlukan daripada anda.','note.bed':'Sebuah tempat wad telah ditempah.',
+ 'own.counter':'Kaunter pendaftaran','own.nurse':'Jururawat triaj','own.cashier':'Kaunter bayaran',
+ 'own.doctor':'Doktor bertugas','own.bedmgmt':'Pengurusan wad','own.business':'Pejabat Pentadbiran',
+ 'own.admin':'Pentadbiran kemasukan','own.porter':'Pasukan porter','own.wardnurse':'Jururawat wad',
+ 'toast.queue':'Nombor anda dipanggil untuk triaj','toast.payment':'Bayaran diterima',
+ 'toast.doctor':'Doktor sedia berjumpa anda','toast.blood':'Keputusan ujian darah sudah sedia',
+ 'toast.admit':'Wad anda sedia, porter dalam perjalanan',
+ 'toast.bedready':'Wad anda sudah sedia','toast.callback':'Panggilan balik Pejabat Pentadbiran diminta',
+ 'toast.log':'Surat jaminan insurans diluluskan',
+ 'stop.screen.t':'Saringan ketibaan di pintu masuk',
+ 'stop.queue.t':'Nombor giliran diberi, tunggu triaj',
+ 'stop.triage.t':'Penilaian triaj oleh jururawat',
+ 'stop.payment.t':'Pembayaran di kaunter',
+ 'stop.doctor.t':'Tunggu doktor, kemudian konsultasi',
+ 'stop.blood.t':'Ujian darah diambil, tunggu keputusan',
+ 'stop.decision.t':'Diagnosis diberi, keputusan kemasukan, berjalan ke kawasan kemasukan',
+ 'stop.admit.t':'Daftar masuk, tunggu wad, porter bawa anda naik',
+ 'stop.screen.d':'','stop.queue.d':'','stop.triage.d':'','stop.payment.d':'',
+ 'stop.doctor.d':'','stop.blood.d':'','stop.decision.d':'','stop.admit.d':'',
+ 'fin.btn':'Kewangan','fin.title':'Kos dan dokumen','fin.ask':'Tanya apa sahaja',
+ 'fin.placeholder':'Taip soalan anda','fin.send':'Hantar',
+ 'fin.greet':'Tanya apa sahaja tentang kos penginapan anak anda.','fin.offline':'Mod luar talian: jawapan sedia ada',
+ 'chip.1':'Berapa kosnya?','chip.2':'Boleh guna MediSave?','chip.3':'Perlu bayar deposit?','chip.4':'Apa yang perlu dibawa?',
+ 'fin.wards':'Pilihan wad','fin.daily':'Kadar bilik','fin.est':'Anggaran bil','fin.deposit':'Deposit',
+ 'fin.free':'{n} daripada {m} ada','fin.night':'semalam','fin.avail':'Ada sekarang',
+ 'fin.wardsSub':'Doktor dan jururawat sama bagi setiap kelas. Yang berbeza ialah biliknya, dan bayaran anda.',
+ 'fin.viewCards':'Pilihan','fin.viewCompare':'Banding',
+ 'cue.more':'Lagi di bawah',
+ 'jump.wards':'Wad','jump.ins':'Insurans','jump.ask':'Tanya','jump.docs':'Dokumen','jump.support':'Bantuan','jump.gloss':'Istilah',
+ 'fin.stay':'Jangkaan tinggal','fin.nights':'{n} malam','fin.night1':'1 malam',
+ 'fin.subsidy':'Subsidi kerajaan','fin.subYes':'Dikenakan, sehingga {p}%','fin.subNo':'Tidak layak',
+ 'fin.gross':'Anggaran bil','fin.plan':'Bayaran insurans','fin.msave':'MediSave boleh tanggung',
+ 'fin.cash':'Bayaran tunai anda','fin.cashShort':'Tunai',
+ 'cmp.beds':'Katil dalam bilik','cmp.air':'Penghawa dingin','cmp.yes':'Ada','cmp.vent':'Pengudaraan asli',
+ 'cmp.bath':'Bilik air','cmp.own':'Dalam bilik','cmp.shared':'Dikongsi',
+ 'cmp.parent':'Ibu bapa tidur','cmp.sofa':'Katil sofa, percuma','cmp.fold':'Katil lipat','cmp.claim':'Pelan anda',
+ 'cmp.note':'Kadar bilik ialah kadar rasmi KKH; B2 dan C sudah termasuk subsidi maksimum. Selebihnya anggaran prototaip, bukan sebut harga.',
+ 'amen.ac':'Berhawa dingin','amen.vent':'Pengudaraan asli','amen.ownbath':'Bilik air sendiri',
+ 'amen.sharedbath':'Bilik air dikongsi','amen.wardrobe':'Almari','amen.cabinet':'Kabinet tepi katil',
+ 'amen.sofa':'Katil sofa untuk seorang ibu bapa','amen.fold':'Katil lipat untuk seorang ibu bapa','amen.phone':'Telefon',
+ 'amen.fridge':'Peti sejuk mini','amen.safe':'Peti simpanan','amen.tv':'Televisyen','amen.news':'Akhbar harian',
+ 'cl.okS':'Penuh','cl.partS':'{p}% sahaja','cl.noS':'Tiada',
+ 'cl.ok':'Tuntutan penuh','cl.part':'Dikadarkan {p}%','cl.no':'Tiada bayaran',
+ 'cl.okWhy':'Kelas ini dalam kelayakan pelan anda, jadi tuntutan dinilai atas keseluruhan bil.',
+ 'cl.partWhy':'Kelas ini melebihi kelayakan pelan anda, jadi hanya kira-kira {p}% bil boleh dituntut.',
+ 'cl.dedWhy':'Bil ini di bawah deduktibel {d} bagi kelas ini, jadi pelan tidak membayar apa-apa.',
+ 'cl.bothWhy':'Melebihi kelayakan, jadi hanya {p}% boleh dituntut, dan jumlah itu di bawah deduktibel {d}.',
+ 'ins.rider':'Pelan saya ada rider','ins.riderHint':'Rider yang dibeli mulai 1 April 2026 tidak boleh membayar deduktibel, dan menghadkan bahagian anda kepada $6,000 setahun. Rider yang dibeli sebelum 27 November 2025 masih membayar deduktibel, terhad kepada $3,000.',
+ 'ins.claimTitle':'Apa yang pelan ini tuntut, mengikut kelas wad',
+ 'ins.claimNote':'Ia berubah mengikut tempoh tinggal, jadi laraskan Jangkaan tinggal di atas. Anggaran sahaja: deduktibel, ko-insurans dan pengadaran ikut terma polisi anda.',
+ 'ins.tier':'Kelayakan','ins.tier0':'Kelas B2 / C','ins.tier1':'Kelas B1','ins.tier2':'Kelas A','ins.tier3':'Swasta',
+ 'ins.fromPlan':'dibaca daripada pelan anda','ins.default':'MediShield Life sahaja, sehingga anda pilih pelan',
+ 'hi.up.t':'{cls} tidak menambah bayaran pelan anda','hi.up.b':'Untuk {n}, ia menelan kira-kira {gap} lebih tunai berbanding Kelas B2. Kelas A1 dan B1 tiada subsidi kerajaan, dan tuntutan dikurangkan kepada kira-kira {p}% di sini.',
+ 'hi.ded.t':'Pelan anda tidak membayar bagi tempoh sependek ini','hi.ded.b':'Bil berada di bawah deduktibel {d}. MediSave menanggung kira-kira {ms}, dan subsidi wad sudah menanggung selebihnya.',
+ 'hi.ok.t':'Ini julat bersubsidi','hi.ok.b':'Subsidi kerajaan sehingga {p}% sudah termasuk, dan pelan anda menuntut penuh di sini. Naik kelas akan menamatkan subsidi.',
+ 'hi.backdate':'Jika anda naik kelas kemudian, caj lebih tinggi dikira semula dari hari pertama.',
+ 'bed.compare':'Buka Kewangan untuk membanding kelas dan kos sebenar setiap satu.',
+ 'wc.a.n':'Kelas A1','wc.a.f':'Bilik tunggal, bilik air sendiri, berhawa dingin',
+ 'wc.b1.n':'Kelas B1','wc.b1.f':'Empat katil, bilik air sendiri, berhawa dingin',
+ 'wc.b2.n':'Kelas B2','wc.b2.f':'Enam katil, bilik air dikongsi, pengudaraan asli',
+ 'wc.c.n':'Kelas C','wc.c.f':'Lapan katil, bilik air dikongsi, pengudaraan asli',
+ 'fin.checkIns':'Semak insurans anda','ins.none':'Pilih penanggung insurans',
+ 'cov.log':'Surat jaminan','cov.notsub':'Belum dihantar','cov.submitted':'Telah dihantar','cov.approved':'Diluluskan',
+ 'fin.docsTitle':'Senarai Dokumen',
+ 'doc.nric':'NRIC atau FIN anda','doc.birthcert':'Sijil kelahiran anak',
+ 'doc.consent':'Borang kebenaran kemasukan','doc.medisave':'Kebenaran MediSave','doc.insurance':'Butiran polisi insurans',
+ 'fin.support':'Perlukan bantuan lanjut','fin.office':'Pejabat Pentadbiran','fin.hours':'Waktu',
+ 'fin.book':'Minta panggilan balik','fin.booked':'Diminta','fin.glossary':'Istilah dijelaskan',
+ 'gl.1.t':'Deposit','gl.1.d':'Diambil semasa kemasukan dan ditolak daripada bil akhir. Bukan caj tambahan.',
+ 'gl.2.t':'Kelas wad','gl.2.d':'Jenis bilik. Ia menentukan keselesaan dan jumlah subsidi.',
+ 'gl.3.t':'Ujian kemampuan','gl.3.d':'Semakan pendapatan isi rumah untuk menentukan kadar subsidi anda.',
+ 'gl.4.t':'Kebenaran MediSave','gl.4.d':'Borang yang membenarkan hospital mengeluarkan wang dari akaun MediSave anda.',
+ 'gl.5.t':'Surat jaminan','gl.5.d':'Penanggung insurans mengesahkan ia akan membayar sebahagian bil secara terus.',
+ 'gl.6.t':'Naik taraf','gl.6.d':'Berpindah ke kelas wad lebih tinggi. Caj dikira semula dari hari pertama, kecuali kadar bilik.',
+ 'gl.7.t':'Pengadaran','gl.7.d':'Jika anda tinggal di kelas melebihi kelayakan pelan, penanggung insurans memotong bil yang dinilai dahulu, selalunya kepada kira-kira satu pertiga.',
+ 'gl.8.t':'Deduktibel','gl.8.d':'Bahagian pertama bil tahunan yang anda bayar sendiri sebelum pelan Shield membayar. Ia lebih tinggi bagi kelas wad lebih tinggi.',
+ 'gl.9.t':'Rider','gl.9.d':'Tambahan kepada pelan Shield yang menanggung deduktibel dan sebahagian besar ko-bayaran.',
+ 'gl.10.t':'MediShield Life','gl.10.d':'Pelan asas negara. Ia disesuaikan dengan bil Kelas B2 dan C, jadi ia tidak membayar lebih hanya kerana anda pilih kelas lebih tinggi.',
+ 'help.eyebrow':'Bantuan','help.title':'Cara membaca halaman ini',
+ 'help.ctaTitle':'Perlukan bantuan orang?','help.ctaBody':'Tanya mana-mana jururawat di kaunter. Jika keadaan anak anda berubah, beritahu segera.',
+ 'set.title':'Butiran anda','set.phone':'Nombor telefon bimbit','set.phoneHint':'Digunakan pada peranti ini sahaja.',
+ 'set.optin':'Hantar peringatan pada setiap peringkat','set.lang':'Bahasa pilihan','set.saved':'Disimpan',
+ 'faq.1.q':'Apa maksud setiap hentian?','faq.1.a':'Garisan ini menunjukkan setiap langkah hingga ke wad anda. Bulatan kuning besar ialah kedudukan anda dan ia kekal di tempatnya. Tatal garisan untuk melihat ke hadapan atau ke belakang.',
+ 'faq.2.q':'Apa yang kad wad beritahu saya?','faq.2.a':'Sebelum wad ditetapkan ia menunjukkan tiada tempat ditempah. Selepas ditetapkan ia menamakan wad dan nombor katil, dan bila bilik itu sedia.',
+ 'faq.3.q':'Kenapa menunggu lebih lama?','faq.3.a':'Masa yang ditunjukkan adalah biasa, bukan janji. Kes kecemasan yang tiba selepas anda dilihat dahulu.'
+},
+ta:{
+ 'nav.home':'முகப்பு','nav.finance':'நிதி','nav.help':'உதவி','nav.staff':'ஊழியர்',
+ 'fin.eyebrow':'நிதி','dir.label':'அடுத்து எங்கே செல்வது',
+ 'dir.queue':'உங்கள் எண் அழைக்கப்படும்போது ட்ரையேஜ் 2 க்குச் செல்லுங்கள்.',
+ 'dir.triage':'கட்டண கவுண்டர் 12 க்குச் செல்லுங்கள்.',
+ 'dir.decision':'நிதி தாவலில் உங்கள் காப்பீட்டு பாதுகாப்பையும் தற்போது கிடைக்கும் வார்டு வகைகளையும் பாருங்கள்.',
+ 'dir.admit':'{q} எண், காத்திருப்பு பகுதிக்குத் திரும்புங்கள்; வார்டுக்கு அழைத்துச் செல்ல ஒருவர் வருவார்.',
+ 'ins.search':'உங்கள் காப்பீட்டு நிறுவனம் அல்லது திட்டத்தைத் தேடுங்கள்','ins.nomatch':'பொருந்தும் காப்பீட்டு நிறுவனம் அல்லது திட்டம் இல்லை',
+ 'cl.underS':'ஏதுமில்லை','cl.under':'இந்தத் தங்கலுக்கு எதுவும் வழங்காது',
+ 'cl.pickPlan':'திட்டத்தைத் தேர்வுசெய்','cl.pickPlanS':'எந்தத் திட்டம்?',
+ 'ins.clear':'காப்பீட்டு நிறுவனத்தை அழி',
+ 'cl.upto':'அதிகபட்சம் {v}','cl.least':'குறைந்தது {v}',
+ 'cl.stillMshl':'குடிமக்களுக்கும் நிரந்தரவாசிகளுக்கும் மெடிஷீல்ட் லைஃப் தன் பங்கை வழங்கும்.',
+ 'cl.noWard':'வார்டு கட்டணத்தைச் செலுத்தாது','cl.noWardS':'இதற்கு இல்லை',
+ 'cl.mshl':'மெடிஷீல்ட் லைஃப் மட்டும்','cl.mshlS':'MSHL மட்டும்',
+ 'cl.mshlWhy':'இங்கே மெடிஷீல்ட் லைஃப் மட்டுமே வழங்கும். இந்தப் பிரிவுக்கு அது கட்டணத்தின் {p}% அடிப்படையில் கணக்கிடப்படுகிறது.',
+ 'cl.sched':'நிர்ணயிக்கப்பட்ட வரம்பு வரை','cl.schedS':'வரம்புடன்',
+ 'cl.schedWhy':'இந்தப் பிரிவு உங்கள் திட்டத்தின் வரம்புக்குள் உள்ளது. ஆனால் திட்டம் மொத்தக் கட்டணத்தை அல்ல, ஒவ்வொரு பொருளுக்கும் நிர்ணயிக்கப்பட்ட தொகையையே வழங்கும்.',
+ 'cl.unk':'விகிதாசாரம், விகிதம் உங்கள் திட்டத்தில்','cl.unkS':'விகிதாசாரம்',
+ 'cl.unkWhy':'இந்தப் பிரிவு உங்கள் திட்டத்தின் வரம்பை மீறுகிறது. விகிதாசாரக் காரணி பொருந்தும். சரியான விகிதம் உங்கள் பலன் அட்டவணையில் உள்ளது, நிர்வாக அலுவலகம் அதை உறுதிப்படுத்தும்.',
+ 'cl.nopro':'விகிதாசாரம் இல்லை, ஆனால் வரம்பு உண்டு','cl.noproS':'வரம்புடன்',
+ 'cl.noproWhy':'இந்தப் பிரிவு உங்கள் திட்டத்தின் வரம்பை மீறுகிறது, ஆனால் இந்தப் பாலிசியில் விகிதாசாரக் காரணி இல்லை. இருப்பினும் ஒவ்வொரு பொருளுக்கும் அதன் நிர்ணய வரம்பு வரை மட்டுமே வழங்கும்.',
+ 'why.cat-ltc':'இது கடுமையான நீண்டகால இயலாமைக்கு மாதாந்திரப் பணத்தை வழங்குகிறது. மருத்துவமனை வார்டு கட்டணத்தைச் செலுத்தாது.',
+ 'why.cat-outp':'இது கிளினிக்கில் வெளிநோயாளர் வருகைகளை உள்ளடக்குகிறது. வார்டில் தங்குவதற்குச் செலுத்தாது.',
+ 'why.cat-fw':'புலம்பெயர் தொழிலாளர் உள்நோயாளர் காப்பீட்டை முதலாளி தொழிலாளருக்காக வாங்குகிறார், எனவே இது ஒரு குழந்தையை உள்ளடக்காது.',
+ 'why.cat-wica':'பணிக்கால காயத்திற்கான இழப்பீடு வேலையில் ஏற்படும் காயத்தை உள்ளடக்கும், எனவே இங்கே சேர்க்கப்படும் குழந்தையை உள்ளடக்காது.',
+ 'why.cat-lump':'குறிப்பிட்ட நிகழ்வு நடந்தால் இது உங்களுக்கு ஒரு மொத்தத் தொகையை வழங்கும். அது மருத்துவமனைக்குச் செலுத்தப்படுவதில்லை.',
+ 'why.cat-nope':'குழந்தைகள் அவசரப் பிரிவு வழியாகச் சேர்க்கப்படும் குழந்தைக்கு இந்தக் காப்பீடு பொருந்தாது.',
+ 'why.cat-grp':'முதலாளியின் காப்பீடு வார்டு கட்டணத்தைச் செலுத்தலாம். ஆனால் எந்த வார்டு, என்ன வரம்பு என்பதை சுகாதார அமைச்சு அல்ல, உங்கள் முதலாளியின் பாலிசியே தீர்மானிக்கிறது.',
+ 'why.cat-intl':'சர்வதேசக் காப்பீடு வார்டு கட்டணத்தைச் செலுத்தலாம். ஆனால் எந்த வார்டு, எவ்வளவு உங்கள் பங்கு, மருத்துவமனைக்கு நேரடியாகச் செலுத்துமா என்பதை உங்கள் பாலிசியே தீர்மானிக்கிறது.',
+ 'why.cat-co':'அது காப்பீட்டு நிறுவனம், திட்டம் அல்ல. என்ன கிடைக்கும் எனப் பார்க்க திட்டத்தின் பெயரைத் தேர்ந்தெடுங்கள்.',
+ 'ins.tierNone':'வார்டு திட்டம் அல்ல',
+ 'plan.pick':'மேலே தேடி உங்கள் திட்டத்தைத் தேர்ந்தெடுங்கள். காப்பீட்டு நிறுவனம் மட்டும் தெரிந்தால், அதைத் தேர்ந்தெடுத்தால் திட்டங்கள் பட்டியலிடப்படும்.',
+ 'plan.coIP':'{g} ஒருங்கிணைந்த ஷீல்ட் திட்டங்களை வழங்குகிறது. உங்கள் பாலிசியில் உள்ள திட்டப் பெயரைத் தேர்ந்தெடுங்கள்.',
+ 'plan.coNo':'{g} ஒருங்கிணைந்த ஷீல்ட் திட்டங்களை வழங்குவதில்லை. அவர்களிடம் மருத்துவமனைத் திட்டம் இருந்தால், பாலிசியைக் கொண்டு வாருங்கள், நிர்வாக அலுவலகம் அதைப் படிக்கும்.',
+ 'plan.ward':'இந்த அளவு வரை','plan.wardNo':'வார்டு பிரிவு இல்லை',
+ 'plan.under':'அடிப்படையில்','plan.underMshl':'குடிமக்களுக்கும் நிரந்தரவாசிகளுக்கும் மெடிஷீல்ட் லைஃப் தொடரும்',
+ 'plan.ded':'ஒவ்வொரு பாலிசி ஆண்டிலும் முதலில் நீங்கள் செலுத்துவது','plan.coins':'அதன் பிறகு உங்கள் பங்கு',
+ 'plan.coinsMshl':'முதல் $5,000ல் 10%, அடுத்த $5,000ல் 5%, அதற்கு மேல் 3%',
+ 'plan.coinsIP':'10%, ரைடர் இருந்தால் 5%',
+ 'plan.lim':'ஓராண்டில் அதிகபட்சம்',
+ 'plan.sched':'இந்தத் திட்டம் மொத்தக் கட்டணத்தை அல்ல, ஒவ்வொரு பொருளுக்கும் நிர்ணயிக்கப்பட்ட தொகையை வழங்கும்.',
+ 'plan.std':'நிலையான திட்டம். எல்லாக் காப்பீட்டு நிறுவனங்களுக்கும் ஒரே பலன்களை சுகாதார அமைச்சு நிர்ணயிக்கிறது. பத்தில் ஒன்பது B1 பிரிவு கட்டணங்களை முழுமையாக ஈடுகட்டும் அளவில் அமைந்தது.',
+ 'plan.shut':'புதிய உறுப்பினர்களுக்கு இனி விற்கப்படுவதில்லை. இருக்கும் உறுப்பினர்கள் தொடர்ந்து புதுப்பிக்கலாம்.',
+ 'plan.shutS':'புதியோருக்கு இல்லை',
+ 'ins.riderTitle':'உங்களிடம் ரைடர் உள்ளதா?',
+ 'ins.rider0':'ரைடர் இல்லை','ins.rider1':'ரைடர்','ins.rider2':'பழைய ரைடர்',
+ 'proto':'மாதிரி பக்கம்: எடுத்துக்காட்டு தரவு, நேரடி தகவல் அல்ல',
+ 'bed.none':'படுக்கை இன்னும் ஒதுக்கப்படவில்லை','bed.noneSub':'கோரிக்கை ஒப்புதலுக்குப் பிறகு ஒதுக்கப்படும்',
+ 'bed.assigned':'உங்கள் படுக்கை ஒதுக்கப்பட்டுள்ளது','bed.ward':'வார்டு','bed.bed':'படுக்கை','bed.class':'வார்டு வகை',
+ 'bed.state':'படுக்கை நிலை','bed.ready':'தயாராகும் நேரம்','bed.avail':'விவரங்களுக்கு தட்டவும்',
+ 'bed.note':'படுக்கை ஒதுக்கப்பட்டவுடன் பிடித்து வைக்கப்படும். அழைக்கப்படும் முன் சுத்தம் செய்யப்படும்.',
+ 'clean.occupied':'முந்தைய நோயாளி வெளியேறுகிறார்','clean.cleaning':'சுத்தம் செய்யப்படுகிறது','clean.ready':'உங்களுக்குத் தயார்',
+ 'queue.label':'காத்திருப்பு எண்','queue.ahead':'உங்களுக்கு முன் {n} பேர்','queue.next':'உங்கள் எண் அழைக்கப்பட்டது',
+ 'line.now':'நீங்கள் இங்கே','line.next':'அடுத்தது',
+ 'line.done':'{n} படிகள் முடிந்தன','line.done1':'1 படி முடிந்தது',
+ 'line.showAll':'இதற்குப் பின் மேலும் {n} படிகள்','line.showLess':'குறைவாகக் காட்டு',
+ 'toast.queueNum':'காத்திருப்பு எண் {q} வழங்கப்பட்டது. அழைப்பைக் கவனியுங்கள்.',
+ 'journey.title':'நீங்கள் இப்போது எங்கே இருக்கிறீர்கள்',
+ 'pill.est':'மதிப்பிட்ட நேரம்','unit.min':'நிமிடம்','unit.hr':'மணி',
+ 'status.label':'நிலை','status.idle':'காத்திருப்பு','status.processing':'செயலாக்கத்தில்','status.ready':'தயார்',
+ 'state.inprog':'நடந்து கொண்டிருக்கிறது','state.ready':'நீங்கள் செல்லலாம்',
+ 'ctrl.back':'பின்','ctrl.next':'அடுத்து','ctrl.wait':'இந்த கட்டம் முடிய காத்திருங்கள்','ctrl.ready':'தொடரலாம்','ctrl.end':'பயணத்தின் முடிவு',
+ 'act.onway':'நான் புறப்பட்டுவிட்டேன்','act.arrived':'நான் வந்துவிட்டேன்','act.done':'இது முடிந்தது',
+ 'act.waiting':'உங்கள் முறை வரும்போது உடனே தெரிவிப்போம்',
+ 'act.called':'உங்கள் எண் அழைக்கப்பட்டது. {d} நோக்கி புறப்படும்போது தட்டுங்கள்.',
+ 'act.enroute':'{d} நோக்கி செல்கிறீர்கள்','act.finished':'இந்த கட்டம் முடிந்ததும் தட்டுங்கள்',
+ 'dest.queue':'ட்ரையேஜ் 2','dest.triage':'கட்டண கவுண்டர் 12','dest.payment':'காத்திருப்பு பகுதி',
+ 'dest.doctor':'காத்திருப்பு பகுதி','dest.blood':'காத்திருப்பு பகுதி','dest.decision':'அனுமதி பிரிவு',
+ 'dest.admit':'காத்திருப்பு பகுதி',
+ 'toast.onway':'நன்றி. நீங்கள் வருவது கவுண்டருக்குத் தெரியும்',
+ 'note.started':'இந்த கட்டம் தொடங்கிவிட்டது.','note.done':'இந்த கட்டம் முடிந்தது.',
+ 'note.action':'உங்களிடமிருந்து ஏதோ ஒன்று தேவை.','note.bed':'வார்டில் ஒரு இடம் ஒதுக்கப்பட்டுள்ளது.',
+ 'own.counter':'பதிவு கவுண்டர்','own.nurse':'பரிசோதனை செவிலியர்','own.cashier':'கட்டண கவுண்டர்',
+ 'own.doctor':'பணியிலுள்ள மருத்துவர்','own.bedmgmt':'வார்டு மேலாண்மை','own.business':'நிர்வாக அலுவலகம்',
+ 'own.admin':'அனுமதி நிர்வாகம்','own.porter':'போர்ட்டர் குழு','own.wardnurse':'வார்டு செவிலியர்',
+ 'toast.queue':'உங்கள் எண் பரிசோதனைக்கு அழைக்கப்பட்டது','toast.payment':'கட்டணம் பெறப்பட்டது',
+ 'toast.doctor':'மருத்துவர் உங்களைப் பார்க்கத் தயார்','toast.blood':'இரத்த பரிசோதனை முடிவுகள் தயார்',
+ 'toast.admit':'உங்கள் வார்டு தயார், போர்ட்டர் வருகிறார்',
+ 'toast.bedready':'உங்கள் வார்டு தயாராக உள்ளது','toast.callback':'நிர்வாக அலுவலக அழைப்பு கோரப்பட்டது',
+ 'toast.log':'காப்பீட்டு உத்தரவாதக் கடிதம் ஒப்புதல் பெற்றது',
+ 'stop.screen.t':'நுழைவாயிலில் வருகை பரிசோதனை',
+ 'stop.queue.t':'வரிசை எண் வழங்கப்பட்டது, பரிசோதனைக்கு காத்திருங்கள்',
+ 'stop.triage.t':'செவிலியரின் முதற்கட்ட மதிப்பீடு',
+ 'stop.payment.t':'கவுண்டரில் கட்டணம் செலுத்துதல்',
+ 'stop.doctor.t':'மருத்துவருக்காக காத்திருப்பு, பின் ஆலோசனை',
+ 'stop.blood.t':'இரத்த பரிசோதனை எடுக்கப்பட்டது, முடிவுக்கு காத்திருங்கள்',
+ 'stop.decision.t':'நோய் கண்டறியப்பட்டது, அனுமதி முடிவு, அனுமதி பகுதிக்கு நடத்தல்',
+ 'stop.admit.t':'அனுமதி பதிவு, வார்டுக்கு காத்திருப்பு, போர்ட்டர் அழைத்துச் செல்வார்',
+ 'stop.screen.d':'','stop.queue.d':'','stop.triage.d':'','stop.payment.d':'',
+ 'stop.doctor.d':'','stop.blood.d':'','stop.decision.d':'','stop.admit.d':'',
+ 'fin.btn':'நிதி','fin.title':'செலவும் ஆவணங்களும்','fin.ask':'எதையும் கேளுங்கள்',
+ 'fin.placeholder':'உங்கள் கேள்வியை தட்டச்சு செய்யுங்கள்','fin.send':'அனுப்பு',
+ 'fin.greet':'உங்கள் குழந்தையின் சிகிச்சைச் செலவு பற்றி எதையும் கேளுங்கள்.','fin.offline':'ஆஃப்லைன் முறை: முன் தயாரிக்கப்பட்ட பதில்',
+ 'chip.1':'செலவு எவ்வளவு?','chip.2':'MediSave பயன்படுத்தலாமா?','chip.3':'முன்பணம் கட்ட வேண்டுமா?','chip.4':'என்ன கொண்டு வர வேண்டும்?',
+ 'fin.wards':'வார்டு தேர்வுகள்','fin.daily':'அறைக் கட்டணம்','fin.est':'மதிப்பீட்டு கட்டணம்','fin.deposit':'முன்பணம்',
+ 'fin.free':'{m} இல் {n} காலி','fin.night':'ஒரு இரவுக்கு','fin.avail':'தற்போது காலி',
+ 'fin.wardsSub':'எல்லா வகைகளிலும் மருத்துவரும் செவிலியரும் ஒன்றே. மாறுவது அறையும், நீங்கள் செலுத்தும் தொகையும் மட்டுமே.',
+ 'fin.viewCards':'தேர்வுகள்','fin.viewCompare':'ஒப்பீடு',
+ 'cue.more':'கீழே மேலும்',
+ 'jump.wards':'வார்டு','jump.ins':'காப்பீடு','jump.ask':'கேளுங்கள்','jump.docs':'ஆவணங்கள்','jump.support':'உதவி','jump.gloss':'சொற்கள்',
+ 'fin.stay':'எதிர்பார்க்கும் தங்கல்','fin.nights':'{n} இரவுகள்','fin.night1':'1 இரவு',
+ 'fin.subsidy':'அரசு மானியம்','fin.subYes':'பொருந்தும், {p}% வரை','fin.subNo':'தகுதி இல்லை',
+ 'fin.gross':'மதிப்பீட்டு கட்டணம்','fin.plan':'காப்பீடு செலுத்துவது','fin.msave':'MediSave ஈடுசெய்வது',
+ 'fin.cash':'நீங்கள் ரொக்கமாக','fin.cashShort':'ரொக்கம்',
+ 'cmp.beds':'அறையில் படுக்கைகள்','cmp.air':'குளிரூட்டல்','cmp.yes':'உண்டு','cmp.vent':'இயற்கை காற்று',
+ 'cmp.bath':'குளியலறை','cmp.own':'அறைக்குள்','cmp.shared':'பொது',
+ 'cmp.parent':'பெற்றோர் தங்க','cmp.sofa':'சோஃபா படுக்கை, இலவசம்','cmp.fold':'மடக்கு படுக்கை','cmp.claim':'உங்கள் திட்டம்',
+ 'cmp.note':'அறைக் கட்டணம் KKH வெளியிட்டவை; B2, C கட்டணங்களில் அதிகபட்ச மானியம் ஏற்கனவே சேர்ந்துள்ளது. மற்றவை மாதிரிக்கான மதிப்பீடுகள்.',
+ 'amen.ac':'குளிரூட்டப்பட்டது','amen.vent':'இயற்கை காற்றோட்டம்','amen.ownbath':'தனி குளியலறை',
+ 'amen.sharedbath':'பொது குளியலறை','amen.wardrobe':'அலமாரி','amen.cabinet':'படுக்கை பக்க பெட்டி',
+ 'amen.sofa':'ஒரு பெற்றோருக்கு சோஃபா படுக்கை','amen.fold':'ஒரு பெற்றோருக்கு மடக்கு படுக்கை','amen.phone':'தொலைபேசி',
+ 'amen.fridge':'சிறு குளிர்சாதனம்','amen.safe':'பாதுகாப்பு பெட்டி','amen.tv':'தொலைக்காட்சி','amen.news':'தினசரி செய்தித்தாள்',
+ 'cl.okS':'முழுமை','cl.partS':'{p}% மட்டும்','cl.noS':'இல்லை',
+ 'cl.ok':'முழுமையாக கோரலாம்','cl.part':'{p}% ஆக குறைக்கப்படும்','cl.no':'இங்கு எதுவும் இல்லை',
+ 'cl.okWhy':'இந்த வகை உங்கள் திட்டத்தின் தகுதிக்குள் உள்ளது, எனவே முழு கட்டணத்தின் மீது கோரல் கணக்கிடப்படும்.',
+ 'cl.partWhy':'இந்த வகை உங்கள் தகுதிக்கு மேல் உள்ளது, எனவே கட்டணத்தில் சுமார் {p}% மட்டுமே கோர முடியும்.',
+ 'cl.dedWhy':'கட்டணம் இந்த வகைக்கான {d} கழிவுத்தொகைக்கும் குறைவு, எனவே திட்டம் எதுவும் செலுத்தாது.',
+ 'cl.bothWhy':'தகுதிக்கு மேல் உள்ளதால் சுமார் {p}% மட்டுமே கோரலாம், அதுவும் {d} கழிவுத்தொகைக்கு கீழ் வருகிறது.',
+ 'ins.rider':'என் திட்டத்தில் ரைடர் உள்ளது','ins.riderHint':'ரைடர் கழிவுத்தொகையையும் மீதியின் பெரும்பகுதியையும் ஏற்கும்.',
+ 'ins.claimTitle':'இந்த திட்டம் வார்டு வகை வாரியாக கோருவது',
+ 'ins.claimNote':'தங்கும் நாட்களுக்கு ஏற்ப இது மாறும், எனவே மேலே உள்ள எதிர்பார்க்கும் தங்கலை மாற்றிப் பாருங்கள். மதிப்பீடு மட்டுமே: கழிவுத்தொகை, இணை-காப்பீடு, விகிதாசாரம் உங்கள் பாலிசி விதிகளின்படி அமையும்.',
+ 'ins.tier':'தகுதி','ins.tier0':'B2 / C வகை','ins.tier1':'B1 வகை','ins.tier2':'A வகை','ins.tier3':'தனியார்',
+ 'ins.fromPlan':'உங்கள் திட்டத்திலிருந்து','ins.default':'திட்டம் தேர்வு செய்யும் வரை MediShield Life மட்டும்',
+ 'hi.up.t':'{cls} தேர்வு காப்பீட்டுத் தொகையை உயர்த்தாது','hi.up.b':'{n} தங்கலுக்கு B2 வகையை விட சுமார் {gap} அதிக ரொக்கம். A1, B1 வகைகளுக்கு அரசு மானியம் இல்லை, கோரலும் சுமார் {p}% ஆக குறைகிறது.',
+ 'hi.ded.t':'இவ்வளவு குறுகிய தங்கலுக்கு காப்பீடு எதுவும் செலுத்தாது','hi.ded.b':'கட்டணம் {d} கழிவுத்தொகைக்கு கீழ் உள்ளது. MediSave சுமார் {ms} ஈடுசெய்யும், மீதியை வார்டு மானியம் ஏற்கனவே ஏற்றுள்ளது.',
+ 'hi.ok.t':'இது மானியம் உள்ள வரம்பு','hi.ok.b':'{p}% வரை அரசு மானியம் இந்தக் கட்டணத்தில் சேர்ந்துள்ளது, உங்கள் திட்டமும் இங்கு முழுமையாக கோரும். மேல் வகைக்கு மாறினால் மானியம் நிற்கும்.',
+ 'hi.backdate':'பின்னர் மேல் வகைக்கு மாறினால், அதிக கட்டணங்கள் முதல் நாளிலிருந்து கணக்கிடப்படும்.',
+ 'bed.compare':'வகைகளையும் அவற்றின் செலவையும் ஒப்பிட நிதி பகுதிக்குச் செல்லுங்கள்.',
+ 'wc.a.n':'A1 வகை','wc.a.f':'தனி அறை, சொந்த குளியலறை, குளிரூட்டப்பட்டது',
+ 'wc.b1.n':'B1 வகை','wc.b1.f':'நான்கு படுக்கை, சொந்த குளியலறை, குளிரூட்டப்பட்டது',
+ 'wc.b2.n':'B2 வகை','wc.b2.f':'ஆறு படுக்கை, பொது குளியலறை, இயற்கை காற்றோட்டம்',
+ 'wc.c.n':'C வகை','wc.c.f':'எட்டு படுக்கை, பொது குளியலறை, இயற்கை காற்றோட்டம்',
+ 'fin.checkIns':'உங்கள் காப்பீட்டைச் சரிபார்க்கவும்','ins.none':'உங்கள் காப்பீட்டு நிறுவனத்தைத் தேர்வு செய்யவும்',
+ 'cov.log':'உத்தரவாதக் கடிதம்','cov.notsub':'சமர்ப்பிக்கப்படவில்லை','cov.submitted':'சமர்ப்பிக்கப்பட்டது','cov.approved':'ஒப்புதல் பெற்றது',
+ 'fin.docsTitle':'ஆவணப் பட்டியல்',
+ 'doc.nric':'உங்கள் NRIC அல்லது FIN','doc.birthcert':'குழந்தையின் பிறப்புச் சான்றிதழ்',
+ 'doc.consent':'கையொப்பமிட்ட ஒப்புதல் படிவம்','doc.medisave':'MediSave அங்கீகாரம்','doc.insurance':'காப்பீட்டு விவரங்கள்',
+ 'fin.support':'மேலும் உதவி தேவையா','fin.office':'நிர்வாக அலுவலகம்','fin.hours':'நேரம்',
+ 'fin.book':'திரும்ப அழைக்கக் கோருங்கள்','fin.booked':'கோரப்பட்டது','fin.glossary':'சொற்கள் விளக்கம்',
+ 'gl.1.t':'முன்பணம்','gl.1.d':'அனுமதியின்போது பெறப்பட்டு இறுதிக் கட்டணத்தில் கழிக்கப்படும். கூடுதல் கட்டணம் அல்ல.',
+ 'gl.2.t':'வார்டு வகை','gl.2.d':'அறை வகை. வசதியையும் மானியத்தையும் தீர்மானிக்கிறது.',
+ 'gl.3.t':'வருமான சோதனை','gl.3.d':'மானிய விகிதத்தை கணக்கிட குடும்ப வருமானம் பரிசீலிக்கப்படும்.',
+ 'gl.4.t':'MediSave அங்கீகாரம்','gl.4.d':'MediSave கணக்கிலிருந்து கட்டணம் எடுக்க அனுமதி அளிக்கும் படிவம்.',
+ 'gl.5.t':'உத்தரவாதக் கடிதம்','gl.5.d':'கட்டணத்தின் ஒரு பகுதியை நேரடியாக செலுத்துவதாக காப்பீட்டு நிறுவனம் தரும் உறுதி.',
+ 'gl.6.t':'மேம்படுத்தல்','gl.6.d':'உயர்ந்த வார்டு வகைக்கு மாறுவது. அறைக் கட்டணம் தவிர மற்ற கட்டணங்கள் முதல் நாளிலிருந்து கணக்கிடப்படும்.',
+ 'gl.7.t':'விகிதாசார கோரல்','gl.7.d':'உங்கள் திட்டத்தின் தகுதிக்கு மேல் உள்ள வகையில் தங்கினால், காப்பீட்டு நிறுவனம் கணக்கில் எடுக்கும் தொகையை முதலில் குறைக்கும், பெரும்பாலும் மூன்றில் ஒரு பங்காக.',
+ 'gl.8.t':'கழிவுத்தொகை','gl.8.d':'Shield திட்டம் செலுத்தத் தொடங்கும் முன் ஆண்டுதோறும் நீங்களே ஏற்கும் முதல் தொகை. உயர் வகைகளுக்கு இது அதிகம்.',
+ 'gl.9.t':'ரைடர்','gl.9.d':'Shield திட்டத்துடன் சேர்க்கும் கூடுதல் பாதுகாப்பு. கழிவுத்தொகையையும் இணை-கட்டணத்தின் பெரும்பகுதியையும் ஏற்கும்.',
+ 'gl.10.t':'MediShield Life','gl.10.d':'தேசிய அடிப்படை திட்டம். B2, C வகை கட்டணங்களுக்கு ஏற்ப அமைந்தது, எனவே உயர் வகையைத் தேர்ந்தால் கூடுதலாக செலுத்தாது.',
+ 'help.eyebrow':'உதவி','help.title':'இந்த பக்கத்தை எப்படி படிப்பது',
+ 'help.ctaTitle':'நேரில் உதவி தேவையா?','help.ctaBody':'கவுண்டரில் எந்த செவிலியரிடமும் கேளுங்கள். நிலை மாறினால் உடனே தெரிவியுங்கள்.',
+ 'set.title':'உங்கள் விவரங்கள்','set.phone':'கைபேசி எண்','set.phoneHint':'இந்த சாதனத்தில் மட்டும் பயன்படும்.',
+ 'set.optin':'ஒவ்வொரு கட்டத்திலும் எனக்கு அறிவிக்கவும்','set.lang':'விருப்ப மொழி','set.saved':'சேமிக்கப்பட்டது',
+ 'faq.1.q':'இந்த நிலைகள் என்ன குறிக்கின்றன?','faq.1.a':'உங்கள் வார்டு வரையிலான ஒவ்வொரு கட்டத்தையும் இந்தக் கோடு காட்டுகிறது. பெரிய மஞ்சள் வட்டம் நீங்கள் இருக்கும் இடம்; அது அசையாது. கோட்டை உருட்டி முன்பின் பார்க்கலாம்.',
+ 'faq.2.q':'வார்டு அட்டை என்ன சொல்கிறது?','faq.2.a':'வார்டு ஒதுக்கப்படும் முன் எதுவும் பிடிக்கப்படவில்லை என்று காட்டும். பிறகு வார்டு, படுக்கை எண், அறை தயாராகும் நேரம் காட்டும்.',
+ 'faq.3.q':'ஏன் அதிகம் காத்திருக்க வேண்டியுள்ளது?','faq.3.a':'இவை வழக்கமான நேரங்கள், உறுதியளிப்பு அல்ல. உங்களுக்குப் பின் வரும் அவசர நிகழ்வுகள் முதலில் கவனிக்கப்படும்.'
+}
+};
+
+let LANG = 'en';
+const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+const esc = s => String(s).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const money = n => '$' + Number(n).toLocaleString('en-SG',
+  {minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: n % 1 ? 2 : 0});
+const money0 = n => '$' + Math.round(n).toLocaleString('en-SG');
+const clock = d => String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+
+/* ============================================================
+   3. STATE
+   ============================================================ */
+let current = 0;
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+/* A different number every run, so no two test sessions look alike. */
+let ticket = 'CE' + String(rnd(12, 96)).padStart(3, '0');
+let queueTimer = null, queueSeen = false;
+/* The line shows only what is finished and what is next. The rest is
+   one tap away rather than on screen the whole time. */
+/* Set when the caregiver taps 'I'm on my way'. It is the one thing the
+   hospital's systems cannot know on their own, and the one thing the
+   counter most needs: is this family coming, or have they not heard? */
+const enroute = {};
+const liveState = {}, timers = {};
+let bedState = 'none', bedReadyAt = null;
+let logState = 'notsub', insurer = '';
+let chosenClass = 'b2';
+let nights = 2, riderMode = 'none', wardView = 'cards';
+const docsDone = {};
+let alerts = [];
+let optIn = true, callbackAsked = false;
+
+const stateOf = i => i < current ? 'ready' : (liveState[STOPS[i].id] || 'idle');
+/* Caregivers see two states on the step they are in — it is happening, or
+   it is done. 'idle' and 'processing' are machine words and mean the same
+   thing to a parent standing in the department. */
+const plainState = st => st === 'ready' ? 'ready' : 'inprog';
+
+function toast(key, sub){
+  if(!optIn) return;
+  const wrap = document.getElementById('toasts');
+  if(!wrap) return;
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = sub ? t(key).replace('{q}', sub) : t(key);
+  wrap.appendChild(el);
+  const kill = ()=>{ el.className = 'toast out'; setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); }, 240); };
+  const h = setTimeout(kill, TOAST_MS);
+  el.addEventListener('click',()=>{ clearTimeout(h); kill(); });
+}
+
+function addAlert(titleKey, bodyKey, ownerKey, act){
+  alerts.unshift({ts:new Date(), titleKey, bodyKey, ownerKey, act:!!act});
+  renderStaff();
+}
+
+function startCycle(id){
+  if(timers[id] || liveState[id] === 'ready') return;
+  liveState[id] = 'idle';
+  timers[id] = setTimeout(()=>{
+    liveState[id] = 'processing'; paintStatus();
+    timers[id] = setTimeout(()=>{
+      liveState[id] = 'ready'; delete timers[id]; paintStatus(); renderQueue();
+      if(AUTO_ADVANCE_MS && STOPS[current] && STOPS[current].id === id){
+        setTimeout(()=>{ if(canAdvance()) goTo(current + 1, true); }, AUTO_ADVANCE_MS);
+      }
+      const s = STOPS.find(x => x.id === id);
+      if(s) addAlert('stop.' + id + '.t', 'note.done', 'own.' + s.own, false);
+      toast('toast.' + id);
+    }, STATUS_STEP_MS);
+  }, STATUS_STEP_MS);
+}
+
+/* the ward card waits before it changes at all, then walks its states */
+function startBed(){
+  if(bedState !== 'none') return;
+  bedState = 'pending';
+  setTimeout(()=>{
+    bedState = 'occupied';
+    bedReadyAt = new Date(Date.now() + 20*60000);
+    addAlert('stop.admit.t','note.bed','own.bedmgmt', false);
+    renderBed(); renderStaff();
+    setTimeout(()=>{ bedState = 'cleaning'; renderBed(); renderStaff();
+      setTimeout(()=>{ bedState = 'ready'; renderBed(); renderStaff();
+        addAlert('bed.assigned','clean.ready','own.wardnurse', false);
+        toast('toast.bedready');
+      }, STATUS_STEP_MS);
+    }, STATUS_STEP_MS);
+  }, BED_DELAY_MS);
+}
+
+function startLog(){
+  if(logState !== 'notsub') return;
+  logState = 'submitted'; renderCover(); renderStaff();
+  setTimeout(()=>{
+    logState = 'approved'; renderCover(); renderStaff();
+    addAlert('cov.log','cov.approved','own.business', false);
+    toast('toast.log');
+  }, STATUS_STEP_MS*2);
+}
+
+/* non-live steps have no status to wait on: land grey, flip to green + check after 0.4s */
+function startInstant(id){
+  if(liveState[id] === 'ready' || timers['i_' + id]) return;
+  liveState[id] = 'idle';
+  timers['i_' + id] = setTimeout(()=>{
+    liveState[id] = 'ready'; delete timers['i_' + id]; paintStatus(); renderQueue();
+  }, 400);
+}
+
+function goTo(i, animate){
+  const prev = current;
+  current = Math.max(0, Math.min(STOPS.length - 1, i));
+  const s = STOPS[current];
+  if(s.live) startCycle(s.id); else startInstant(s.id);
+  if(s.id === 'admit') startBed();
+  if(current > prev) addAlert('stop.' + s.id + '.t', s.act ? 'note.action' : 'note.started', 'own.' + s.own, s.act);
+  if(i < prev) delete enroute[STOPS[current].id];
+  seedQueue();
+  renderLine(); renderQueue(); renderBed();
+  centerCurrent(animate);
+}
+
+/* What, if anything, is the caregiver being asked to do right now?
+   'none' while a step is running — a disabled button during a long wait is
+   just a repeated reminder that nothing is happening. */
+function pendingAction(){
+  if(current >= STOPS.length - 1) return 'end';
+  if(!canAdvance()) return 'none';
+  const d = DIRECTIONS[STOPS[current].id];
+  if(d && d.move) return enroute[STOPS[current].id] ? 'arrived' : 'onway';
+  return 'done';
+}
+
+function canAdvance(){
+  if(current >= STOPS.length - 1) return false;
+  const s = STOPS[current];
+  return !s.live || stateOf(current) === 'ready';
+}
+
+/* kept as a hook: the dial has no scroll position to restore */
+function centerCurrent(){}
+
+/* ============================================================
+   4. RENDER
+   ============================================================ */
+const queueIdx = () => STOPS.findIndex(x => x.id === QUEUE_FROM);
+/* The number is issued the moment you tell the desk you have set off for
+   triage, and stays put from there. The stop index is the fallback for
+   anyone who skips ahead with Next instead of tapping through. */
+const queueShown = () => !!enroute[STOPS[0].id] || current >= queueIdx();
+
+/* A single soft flash, latched so stepping back and forward cannot replay it. */
+let queueFlashed = false;
+function flashQueue(){
+  const qb = document.getElementById('queueBox');
+  if(!qb || qb.hidden || queueFlashed) return;
+  queueFlashed = true;
+  qb.classList.remove('flash'); void qb.offsetWidth; qb.classList.add('flash');
+  setTimeout(()=>{ qb.classList.remove('flash'); }, 1300);
+}
+
+/* The box carries the number alone now, so there is no line in front to
+   simulate and no ticker to keep running. */
+function seedQueue(){ clearTimeout(queueTimer); }
+
+function renderQueue(){
+  const box = document.getElementById('queueBox');
+  if(!box) return;
+  const shown = queueShown();
+  box.hidden = !shown;
+  if(!shown){ queueSeen = false; box.classList.remove('pop','called'); return; }
+
+  document.getElementById('queueNum').textContent = ticket;
+  const called = stateOf(current) === 'ready';
+  box.classList.toggle('called', called);
+
+  /* pop it in the first time it is issued, and say so */
+  if(!queueSeen){
+    queueSeen = true;
+    box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+    toast('toast.queueNum', ticket);
+  }
+}
+
+function renderBed(){
+  const tog = document.getElementById('bedToggle');
+  const assigned = bedState === 'occupied' || bedState === 'cleaning' || bedState === 'ready';
+  tog.classList.toggle('assigned', assigned);
+  document.getElementById('bedMark').textContent = assigned ? BED.ward.replace(/\D/g,'') : '—';
+  document.getElementById('bedLabel').textContent = assigned ? t('bed.assigned') : t('bed.none');
+  document.getElementById('bedSub').textContent = assigned
+    ? t('clean.' + bedState) + ' · ' + t('bed.avail') : t('bed.noneSub');
+  const wc = WCLASS.find(w => w.id === BED.cls);
+  document.getElementById('bedDetail').innerHTML = assigned
+    ? '<div class="kv"><dt>' + t('bed.ward') + '</dt><dd>' + BED.ward + '</dd></div>'
+      + '<div class="kv"><dt>' + t('bed.bed') + '</dt><dd>' + BED.bed + '</dd></div>'
+      + '<div class="kv"><dt>' + t('bed.class') + '</dt><dd>' + t('wc.' + wc.id + '.n') + '</dd></div>'
+      + '<div class="kv"><dt>' + t('bed.state') + '</dt><dd>' + t('clean.' + bedState) + '</dd></div>'
+      + '<div class="kv"><dt>' + t('bed.ready') + '</dt><dd>' + (bedReadyAt ? clock(bedReadyAt) : '—') + '</dd></div>'
+    : WCLASS.map(w => '<div class="kv"><dt>' + t('wc.' + w.id + '.n')
+        + '<span class="src">' + money(w.daily) + '</span></dt><dd>'
+        + t('fin.free').replace('{n}', w.free).replace('{m}', w.total) + '</dd></div>').join('')
+      + '<p class="note" style="margin-top:8px">' + t('bed.compare') + '</p>';
+}
+
+/* One stop on the line. Only the step in hand carries a live status pill
+   and wayfinding — on every other step that information is either always
+   'idle' or already spent, which is exactly the noise users flagged. */
+
+
+/* Wheel geometry. A big radius with the centre far below the screen is what
+   makes the visible sliver read as a gentle arch rather than a curve. STEP is
+   the gap between stops along it, in degrees. */
+const ARCH_R    = 760;
+const ARCH_GAP  = 84;                                    /* px between stops */
+const ARCH_STEP = (ARCH_GAP / ARCH_R) * 180 / Math.PI;   /* ≈ 6.33 degrees */
+const ARCH_C    = 2 * Math.PI * ARCH_R;
+
+function renderLine(){
+  const wheel = document.getElementById('archWheel');
+  if(!wheel) return;
+
+  /* Nodes are pinned to the wheel at their own angle and never move. Turning
+     the wheel by -current brings the stop in hand up to the apex. */
+  wheel.querySelectorAll('.arch-node').forEach(n => n.remove());
+  const spin = -current * ARCH_STEP;
+  STOPS.forEach((s, i)=>{
+    const a = i * ARCH_STEP * Math.PI / 180;
+    const el = document.createElement('div');
+    el.className = 'arch-node ' + (i < current ? 'is-done' : (i === current ? 'is-now' : 'is-todo'));
+    el.style.left = (ARCH_R * Math.sin(a)).toFixed(1) + 'px';
+    el.style.top  = (-ARCH_R * Math.cos(a)).toFixed(1) + 'px';
+    /* counter-spin, on the same curve, so ticks stay upright while it turns */
+    el.style.transform = 'translate(-50%,-50%) rotate(' + (-spin).toFixed(2) + 'deg)';
+    wheel.appendChild(el);
+  });
+  wheel.style.transform = 'rotate(' + spin.toFixed(2) + 'deg)';
+
+  /* the green run, from the first stop round to where you are */
+  const done = (current * ARCH_STEP / 360) * ARCH_C;
+  document.getElementById('archFill').style.strokeDasharray = done.toFixed(1) + ' ' + ARCH_C.toFixed(1);
+
+  /* the stage in hand, read straight under the apex */
+  const s = STOPS[current];
+  let pills = '';
+  if(s.live) pills += '<span class="pill status" data-state="' + stateOf(current)
+    + '" data-stop="' + s.id + '"><i></i><b>' + t('state.' + plainState(stateOf(current))) + '</b></span>';
+  if(s.dur) pills += '<span class="pill">' + t('pill.est') + ' ' + s.dur
+    + ' ' + t('unit.' + (s.u || 'min')) + '</span>';
+
+  let dir = '';
+  if(DIRECTIONS[s.id]){
+    dir = '<div class="stop-dir" data-stop="' + s.id + '"' + (stateOf(current) === 'ready' ? '' : ' hidden') + '>'
+        + '<button class="dir-q" aria-expanded="true" aria-controls="dir-' + s.id + '">'
+        + '<span class="dir-ico" aria-hidden="true">◎</span>'
+        + '<span class="dir-t">' + t('dir.label') + '</span>'
+        + '<span class="stop-chev" aria-hidden="true"></span></button>'
+        + '<div class="dir-a" id="dir-' + s.id + '">'
+        + t('dir.' + s.id).replace('{q}', ticket) + '</div></div>';
+  }
+
+  document.getElementById('dialCore').innerHTML =
+      '<span class="stop-when">' + t('line.now') + '</span>'
+    + '<div class="stop-title">' + t('stop.' + s.id + '.t') + '</div>'
+    + (pills ? '<div class="pills">' + pills + '</div>' : '')
+    + dir;
+
+  wireDisclosure('#dialCore .dir-q');
+  paintStatus();
+}
+
+function paintStatus(){
+  document.querySelectorAll('.pill.status').forEach(p=>{
+    const i = STOPS.findIndex(s => s.id === p.dataset.stop);
+    const st = stateOf(i);
+    p.dataset.state = st;
+    p.querySelector('b').textContent = t('state.' + plainState(st));
+  });
+  const arch = document.getElementById('arch');
+  if(arch) arch.dataset.now = stateOf(current);
+  /* reveal each wayfinding dropdown once its stop is ready */
+  document.querySelectorAll('.stop-dir').forEach(el=>{
+    const i = STOPS.findIndex(s => s.id === el.dataset.stop);
+    el.hidden = stateOf(i) !== 'ready';
+  });
+  /* one flash on the number the moment triage calls it, and that is all */
+  const curDir = DIRECTIONS[STOPS[current].id];
+  if(curDir && curDir.blink && stateOf(current) === 'ready') flashQueue();
+  const act = pendingAction();
+  const dest = t('dest.' + STOPS[current].id);
+  document.getElementById('btnBack').disabled = current === 0;
+
+  const btn = document.getElementById('btnNext');
+  btn.hidden = (act === 'none' || act === 'end');
+  btn.disabled = btn.hidden;
+  if(!btn.hidden) btn.textContent = t('act.' + act);
+
+  const hint = document.getElementById('ctrlHint');
+  if(act === 'end')          hint.textContent = t('ctrl.end');
+  else if(act === 'none')    hint.textContent = t('act.waiting');
+  else if(act === 'arrived') hint.innerHTML = '<b>' + t('act.enroute').replace('{d}', dest) + '</b>';
+  else if(act === 'onway')   hint.textContent = t('act.called').replace('{d}', dest);
+  else                       hint.textContent = t('act.finished');
+}
+
+/* ------------------------------------------------------------
+   Costing engine. One function answers both questions the study
+   surfaced: what is different between the wards, and what does
+   that difference cost me once my policy is taken into account.
+   ------------------------------------------------------------ */
+/* One ward class, one plan, one length of stay. Returns the bill, what
+   the plan pays, and the single reason that decides the answer. */
+function costOf(w, n){
+  n = n || nights;
+  const room  = w.daily * n;
+  const treat = (TREAT_BASE + TREAT_NIGHT * n) * (1 - w.sub);
+  const gross = room + treat;
+
+  const p     = planOf(insurer);
+  const rider = RIDER[riderMode] || RIDER.none;
+  const isIP  = p && p.cat === 'ip' && !p.mshl;
+
+  /* MediShield Life sits under every citizen and PR, plan or no plan. */
+  const mClaim = Math.min(gross * MSHL.pro[w.id], wardCap(n));
+  const mRes   = payout(mClaim, MSHL.ded[w.id], RIDER.none, false);
+
+  let why = 'mshl', pay = mRes.pay, ded = MSHL.ded[w.id],
+      factor = MSHL.pro[w.id], under = mRes.under, co = mRes.co;
+
+  if(p && !paysWard(p)){
+    /* The product cannot pay a ward bill. MediShield Life still can. */
+    why = 'cat-' + p.cat;
+  } else if(isIP){
+    ded = MSHL.ded[w.id];                 /* MOH minimum, same across IPs */
+    const above = w.tier > p.tier;
+    let claim = gross;
+
+    if(!above){
+      why    = p.sched ? 'sched' : 'full';
+      factor = 1;
+    } else if(p.pro === null){
+      /* No pro-ration factor in the policy. The plan still pays, but only
+         up to its own schedule of limits. */
+      why    = 'nopro';
+      factor = 1;
+    } else if(p.proUnk){
+      why    = 'prounk';
+      factor = MSHL.pro[w.id];            /* fall back to the floor we can prove */
+      claim  = Math.min(gross * factor, wardCap(n));
+    } else {
+      factor = (p.pro && p.pro[w.id]) || MSHL.pro[w.id];
+      why    = 'prorate';
+      claim  = gross * factor;
+    }
+
+    const iRes = payout(claim, ded, rider, true);
+    /* An IP payout already contains the MediShield Life portion, so the
+       two are not added. MOH: where the IP limit is lower, the MediShield
+       Life limit applies. */
+    if(iRes.pay >= mRes.pay){ pay = iRes.pay; co = iRes.co; under = iRes.under; ded = iRes.ded; }
+    else { pay = mRes.pay; co = mRes.co; under = mRes.under; ded = MSHL.ded[w.id]; why = 'mshl'; factor = MSHL.pro[w.id]; }
+  }
+
+  const after = gross - pay;
+  const msave = Math.min(after, MEDISAVE_DAY * n);
+  const cash  = after - msave;
+
+  /* How firm the payout figure is. A plan that pays to a schedule of fixed
+     limits can only ever pay less than the whole bill, so its number is a
+     ceiling. Where the pro-ration rate is printed in the customer's own
+     benefit schedule and we cannot read it, the MediShield Life factor is
+     the floor we can prove, so that number is a minimum. */
+  const bound = (why === 'sched' || why === 'nopro') ? 'upto'
+              : (why === 'prounk') ? 'least' : 'exact';
+
+  return {room, treat, gross, pay, msave, cash, ded, co, why, factor, under, bound,
+          prorate: factor < 1, planTier: p && p.cat === 'ip' ? p.tier : 0,
+          plan: p, isIP: isIP};
+}
+
+const chosenWard = () => WCLASS.find(x => x.id === chosenClass);
+const nightsLabel = n => n === 1 ? t('fin.night1') : t('fin.nights').replace('{n}', n);
+const pct = f => Math.round(f * 100);
+
+/* The short badge. It answers one question: will this plan pay here. */
+function claimPill(w, short){
+  const c = costOf(w), s = short ? 'S' : '';
+  const P = (k, cls) => '<span class="cl ' + cls + '">' + k + '</span>';
+  if(c.why === 'cat-co')         return P(t('cl.pickPlan' + s), 'cl-part');
+  if(c.why.indexOf('cat-') === 0) return P(t('cl.noWard' + s), 'cl-no');
+  if(c.under)                    return P(t('cl.underS'), 'cl-no');
+  if(c.why === 'prorate')        return P(t('cl.part' + s).replace('{p}', pct(c.factor)), 'cl-part');
+  if(c.why === 'prounk')         return P(t('cl.unk' + s), 'cl-part');
+  if(c.why === 'nopro')          return P(t('cl.nopro' + s), 'cl-part');
+  if(c.why === 'mshl')           return P(t('cl.mshl' + s), 'cl-part');
+  if(c.why === 'sched')          return P(t('cl.sched' + s), 'cl-ok');
+  return P(t('cl.ok' + s), 'cl-ok');
+}
+
+/* The sentence under the badge. One reason only, the binding one. */
+function claimWhy(w){
+  const c = costOf(w), d = money0(c.ded);
+  if(c.why === 'cat-co') return t('why.cat-co');
+  let cov;
+  if(c.why.indexOf('cat-') === 0) cov = t('why.' + c.why) + ' ' + t('cl.stillMshl');
+  else if(c.why === 'prorate')    cov = t('cl.partWhy').replace('{p}', pct(c.factor));
+  else if(c.why === 'prounk')     cov = t('cl.unkWhy');
+  else if(c.why === 'nopro')      cov = t('cl.noproWhy');
+  else if(c.why === 'mshl')       cov = t('cl.mshlWhy').replace('{p}', pct(MSHL.pro[w.id]));
+  else if(c.why === 'sched')      cov = t('cl.schedWhy');
+  else                            cov = t('cl.okWhy');
+  /* Two different questions, two different answers: how this class is
+     covered at all, and whether the bill on this stay is even big enough
+     to reach the deductible. Say both. */
+  if(c.under) cov += ' ' + t('cl.dedWhy').replace('{d}', money0(c.ded));
+  return cov;
+}
+
+function renderWClass(){
+  document.getElementById('wclassList').innerHTML = WCLASS.map(w=>{
+    const c = costOf(w);
+    return '<button class="wclass" data-cls="' + w.id + '" aria-pressed="' + (w.id === chosenClass) + '">'
+    + '<span class="wclass-top"><span class="wclass-name">' + t('wc.' + w.id + '.n') + '</span>'
+    + '<span class="wclass-price">' + money(w.daily) + ' ' + t('fin.night') + '</span></span>'
+    + '<span class="wclass-feat">' + t('wc.' + w.id + '.f') + '</span>'
+    + '<span class="wclass-line">'
+      + '<span class="wclass-avail' + (w.free <= 2 ? ' low' : '') + '">'
+      + t('fin.free').replace('{n}', w.free).replace('{m}', w.total) + '</span>'
+      + '<span class="wclass-sub">' + t('fin.cashShort') + ' ' + money0(c.cash) + '</span>'
+    + '</span>'
+    + '<span class="wclass-body">'
+      + '<span class="amen">' + w.amen.map(a => '<span>' + t('amen.' + a) + '</span>').join('') + '</span>'
+      + '<span class="wclass-line" style="margin-top:8px">' + claimPill(w)
+        + '<span class="wclass-sub">' + t('fin.gross') + ' ' + money0(c.gross) + '</span></span>'
+      + '<span class="cl-why">' + claimWhy(w) + '</span>'
+    + '</span></button>';
+  }).join('');
+  document.querySelectorAll('.wclass').forEach(b=>{
+    b.addEventListener('click',()=>{
+      chosenClass = b.dataset.cls;
+      renderWClass(); renderCompare(); renderEstimate(); renderClaims(); renderBed(); renderStaff();
+    });
+  });
+  renderCompare();
+}
+
+/* Side-by-side table: the thing users said was missing. Same row labels
+   down the left, one column per class, chosen column highlighted. */
+function renderCompare(){
+  const box = document.getElementById('wcompare');
+  if(!box) return;
+  const cls = w => w.id === chosenClass ? ' class="pick"' : '';
+  const head = '<thead><tr><th class="rowh">' + nightsLabel(nights) + '</th>'
+    + WCLASS.map(w => '<th' + (w.id === chosenClass ? ' class="pick"' : '') + '>'
+        + '<span class="cn">' + t('wc.' + w.id + '.n') + '</span>'
+        + '<span class="cr">' + money(w.daily) + '</span></th>').join('')
+    + '</tr></thead>';
+
+  const row = (label, fn, klass) => '<tr' + (klass ? ' class="' + klass + '"' : '') + '>'
+    + '<th class="rowh">' + label + '</th>'
+    + WCLASS.map(w => '<td' + cls(w) + '>' + fn(w) + '</td>').join('') + '</tr>';
+
+  const num = v => '<span class="num">' + v + '</span>';
+
+  const body = '<tbody>'
+    + row(t('cmp.beds'),   w => num(w.beds))
+    + row(t('cmp.air'),    w => w.air ? t('cmp.yes') : t('cmp.vent'))
+    + row(t('cmp.bath'),   w => t('cmp.' + w.bath))
+    + row(t('cmp.parent'), w => t('cmp.' + w.parent))
+    + row(t('fin.subsidy'), w => w.sub
+        ? '<span class="pos">' + t('fin.subYes').replace('{p}', Math.round(w.sub*100)) + '</span>'
+        : '<span class="neg">' + t('fin.subNo') + '</span>')
+    + row(t('fin.gross'),  w => num(money0(costOf(w).gross)))
+    + row(t('cmp.claim'),  w => claimPill(w, true))
+    + row(t('fin.plan'),   w => num(money0(costOf(w).pay)))
+    + row(t('fin.msave'),  w => num(money0(costOf(w).msave)))
+    + row(t('fin.cash'),   w => num(money0(costOf(w).cash)), 'big')
+    + row(t('fin.deposit'), w => num(money0(w.dep)))
+    + row(t('fin.avail'),  w => '<span class="num' + (w.free <= 2 ? ' neg' : '') + '">'
+        + w.free + '/' + w.total + '</span>')
+    + '</tbody>';
+
+  box.innerHTML = '<div class="cmp-wrap"><table class="cmp">' + head + body + '</table></div>'
+    + '<p class="cmp-note">' + t('cmp.note') + '</p>';
+  const wrap = box.querySelector('.cmp-wrap'), pick = box.querySelector('thead .pick');
+  if(wrap && pick && wrap.scrollWidth > wrap.clientWidth){
+    wrap.scrollLeft = Math.max(0, pick.offsetLeft - wrap.clientWidth/2 + pick.offsetWidth/2);
+  }
+}
+
+function renderEstimate(){
+  const w = chosenWard(), c = costOf(w);
+  document.getElementById('nightsVal').textContent = nightsLabel(nights);
+  document.getElementById('nightsDown').disabled = nights <= 1;
+  document.getElementById('nightsUp').disabled = nights >= 10;
+  document.getElementById('estDaily').textContent = money(w.daily) + ' ' + t('fin.night');
+  document.getElementById('estSub').textContent = w.sub
+    ? t('fin.subYes').replace('{p}', Math.round(w.sub*100)) : t('fin.subNo');
+  document.getElementById('estTotal').textContent = money0(c.gross);
+  document.getElementById('estPlan').textContent = money0(c.pay);
+  document.getElementById('estMs').textContent = money0(c.msave);
+  document.getElementById('estCash').textContent = money0(c.cash);
+  document.getElementById('estDep').textContent = money0(w.dep);
+  renderInsight();
+}
+
+/* The sentence the transcripts asked for: what the choice actually costs,
+   and why a higher class does not buy a bigger claim. */
+function renderInsight(){
+  const box = document.getElementById('wardInsight');
+  if(!box) return;
+  const w = chosenWard(), c = costOf(w);
+  const b2 = WCLASS.find(x => x.id === 'b2'), cb = costOf(b2);
+  const gap = Math.round(c.cash - cb.cash);
+  let title, body;
+  if(w.tier > 0){
+    title = t('hi.up.t').replace('{cls}', t('wc.' + w.id + '.n'));
+    body  = t('hi.up.b').replace('{gap}', money0(Math.abs(gap)))
+              .replace('{n}', nightsLabel(nights)).replace('{p}', pct(c.factor));
+  } else if(c.pay <= 0){
+    title = t('hi.ded.t');
+    body  = t('hi.ded.b').replace('{d}', money0(c.ded)).replace('{ms}', money0(c.msave));
+  } else {
+    title = t('hi.ok.t');
+    body  = t('hi.ok.b').replace('{p}', Math.round(w.sub*100));
+  }
+  box.innerHTML = '<b>' + title + '</b>' + body + ' ' + t('hi.backdate');
+}
+
+/* Claim rules read off the selected policy, class by class. The rows here
+   and the ward cards in the Wards panel are produced by the same costOf,
+   so the two panels can never disagree. */
+function renderClaims(){
+  const box = document.getElementById('claimList');
+  if(!box) return;
+  const p = planOf(insurer);
+
+  const tier = document.getElementById('planTier');
+  if(tier){
+    if(!insurer){
+      tier.innerHTML = '<span>' + t('ins.tier') + '</span><span class="tier-pill">'
+        + t('ins.tier0') + '</span><span>' + t('ins.default') + '</span>';
+    } else if(p && p.cat === 'ip'){
+      tier.innerHTML = '<span>' + t('ins.tier') + '</span><span class="tier-pill">'
+        + t('ins.tier' + p.tier) + '</span><span>' + t('ins.fromPlan') + '</span>';
+    } else {
+      tier.innerHTML = '<span>' + t('ins.tier') + '</span><span class="tier-pill">'
+        + t('ins.tierNone') + '</span><span>' + t('ins.default') + '</span>';
+    }
+  }
+
+  const card = document.getElementById('planCard');
+  if(card) card.innerHTML = planCardHtml(p);
+
+  const rider = document.getElementById('riderSeg');
+  if(rider) rider.querySelectorAll('.seg-b').forEach(b=>{
+    b.setAttribute('aria-selected', String(b.dataset.rider === riderMode));
+  });
+
+  box.innerHTML = WCLASS.map(w=>{
+    const c = costOf(w);
+    return '<div class="claim-row' + (w.id === chosenClass ? ' pick' : '') + '"><div class="claim-l">'
+      + '<div class="claim-w">' + t('wc.' + w.id + '.n') + '</div>'
+      + '<div class="cl-why">' + claimWhy(w) + '</div></div>'
+      + '<div style="text-align:right">' + claimPill(w)
+      + '<div class="wclass-sub" style="margin-top:4px">' + amount(c) + '</div></div></div>';
+  }).join('');
+}
+
+/* What the caregiver actually needs off the policy: the ward it reaches,
+   the money they pay before anything is claimable, and whether the plan
+   is still sold. */
+/* A payout figure, prefixed when it is a ceiling or a floor rather than
+   a number we can stand behind. */
+function amount(c){
+  if(c.why === 'cat-co') return '';
+  if(c.bound === 'upto')  return t('cl.upto').replace('{v}', money0(c.pay));
+  if(c.bound === 'least') return t('cl.least').replace('{v}', money0(c.pay));
+  return money0(c.pay);
+}
+
+function planCardHtml(p){
+  if(!p) return '<p class="hintline">' + t('plan.pick') + '</p>';
+  const row = (k, v) => '<dl class="kv"><dt>' + k + '</dt><dd>' + v + '</dd></dl>';
+  let h = '';
+
+  if(p.cat === 'co'){
+    const kids = PLANS.filter(x => x.g === p.g && x.cat === 'ip');
+    h += '<p class="hintline">' + t(p.ip ? 'plan.coIP' : 'plan.coNo').replace('{g}', esc(p.g)) + '</p>';
+    if(kids.length) h += '<div class="plan-kids">' + kids.map(k =>
+      '<button type="button" class="ins-opt" data-ins="' + esc(k.n) + '">' + esc(k.n) + '</button>').join('') + '</div>';
+    return h;
+  }
+
+  if(p.cat !== 'ip'){
+    h += '<p class="hintline">' + t('why.cat-' + p.cat) + '</p>';
+    h += row(t('plan.ward'), t('plan.wardNo'));
+    h += row(t('plan.under'), t('plan.underMshl'));
+    return h;
+  }
+
+  h += row(t('plan.ward'), t('ins.tier' + p.tier));
+  h += row(t('plan.ded'),
+      WCLASS.map(w => t('wc.' + w.id + '.n') + ' ' + money0(MSHL.ded[w.id])).join('<br>'));
+  h += row(t('plan.coins'), p.mshl ? t('plan.coinsMshl') : t('plan.coinsIP'));
+  if(p.lim) h += row(t('plan.lim'), money0(p.lim));
+  else if(p.mshl) h += row(t('plan.lim'), money0(MSHL.year));
+  if(p.sched) h += '<p class="hintline">' + t('plan.sched') + '</p>';
+  if(p.std)   h += '<p class="hintline">' + t('plan.std') + '</p>';
+  if(p.shut)  h += '<p class="hintline">' + t('plan.shut') + '</p>';
+  return h;
+}
+
+function renderInsurers(){
+  const input = document.getElementById('insInput');
+  if(input) input.value = insurer || '';
+  syncClear();
+}
+
+/* The clear button only exists when there is something to clear. */
+function syncClear(){
+  const x = document.getElementById('insClear'), i = document.getElementById('insInput');
+  if(x && i) x.hidden = !i.value;
+}
+function highlightMatch(name, s){
+  if(!s) return esc(name);
+  const idx = name.toLowerCase().indexOf(s);
+  if(idx < 0) return esc(name);
+  return esc(name.slice(0, idx)) + '<mark>' + esc(name.slice(idx, idx + s.length))
+    + '</mark>' + esc(name.slice(idx + s.length));
+}
+function filterInsurers(q){
+  const list = document.getElementById('insList');
+  if(!list) return;
+  const s = q.trim().toLowerCase();
+  const matches = (s ? PLANS.filter(p => p.n.toLowerCase().includes(s) || p.g.toLowerCase().includes(s)) : PLANS).slice(0, 80);
+  list.innerHTML = matches.length
+    ? matches.map(p => '<button type="button" class="ins-opt" data-ins="' + esc(p.n) + '">'
+        + highlightMatch(p.n, s) + (p.shut ? '<i class="ins-shut">' + t('plan.shutS') + '</i>' : '') + '</button>').join('')
+    : '<div class="ins-empty">' + t('ins.nomatch') + '</div>';
+  list.hidden = false;
+  document.getElementById('insInput').setAttribute('aria-expanded','true');
+  syncClear();
+}
+function selectInsurer(name){
+  insurer = name;
+  const input = document.getElementById('insInput');
+  input.value = name;
+  const list = document.getElementById('insList');
+  list.hidden = true;
+  input.setAttribute('aria-expanded','false');
+  renderClaims(); renderWClass(); renderCompare(); renderEstimate(); renderStaff();
+  syncClear();
+  if(insurer) startLog();
+}
+
+function renderCover(){
+  const state = logState === 'approved' ? 'ready' : logState === 'submitted' ? 'processing' : 'idle';
+  document.getElementById('logPill').dataset.state = state;
+  document.getElementById('logText').textContent = t('cov.' + logState);
+}
+
+function renderDocs(){
+  document.getElementById('docList').innerHTML = DOCS.map(d=>
+    '<button class="check" data-doc="' + d + '" aria-pressed="' + !!docsDone[d] + '">'
+    + '<span class="box" aria-hidden="true"></span><span class="check-t">' + t('doc.' + d) + '</span></button>'
+  ).join('');
+  document.querySelectorAll('.check').forEach(b=>{
+    b.addEventListener('click',()=>{ docsDone[b.dataset.doc] = !docsDone[b.dataset.doc]; renderDocs(); renderStaff(); });
+  });
+}
+
+function renderGlossary(){
+  document.getElementById('glossaryList').innerHTML = [1,2,3,4,5,6,7,8,9,10].map(n=>
+    '<div class="faq-item"><button class="faq-q" aria-expanded="false" aria-controls="gl-' + n + '">'
+    + '<span class="t">' + t('gl.' + n + '.t') + '</span><span class="stop-chev" aria-hidden="true"></span></button>'
+    + '<div class="faq-a" id="gl-' + n + '" hidden>' + t('gl.' + n + '.d') + '</div></div>'
+  ).join('');
+  wireDisclosure('#glossaryList .faq-q');
+}
+
+function renderFaq(){
+  document.getElementById('faqList').innerHTML = [1,2,3].map(n=>
+    '<div class="faq-item"><button class="faq-q" aria-expanded="false" aria-controls="fa-' + n + '">'
+    + '<span class="n">0' + n + '</span><span class="t">' + t('faq.' + n + '.q') + '</span>'
+    + '<span class="stop-chev" aria-hidden="true"></span></button>'
+    + '<div class="faq-a" id="fa-' + n + '" hidden>' + t('faq.' + n + '.a') + '</div></div>'
+  ).join('');
+  wireDisclosure('#faqList .faq-q');
+}
+
+function renderStaff(){
+  const s = STOPS[current];
+  const assigned = bedState === 'occupied' || bedState === 'cleaning' || bedState === 'ready';
+  const wc = WCLASS.find(x => x.id === (assigned ? BED.cls : chosenClass));
+  const done = DOCS.filter(d => docsDone[d]).length;
+  const tagIdx = STOPS.findIndex(x => x.id === 'admit');
+  const row = (k,v,src) => '<div class="kv"><dt>' + k + '<span class="src">' + src + '</span></dt><dd>' + v + '</dd></div>';
+  document.getElementById('staffRecord').innerHTML =
+      row('Patient','TAN, ***** (masked)','SAP')
+    + row('Case number', queueShown() ? 'CE-2026-' + ticket.slice(2) : 'Not issued yet', 'SAP')
+    + row('Current step', I18N.en['stop.' + s.id + '.t'], 'OAS')
+    + row('Step status', s.live ? I18N.en['status.' + stateOf(current)] : 'n/a', 'OAS')
+    + row('Ward class', I18N.en['wc.' + wc.id + '.n'], 'Jireh')
+    + row('Ward and bed', assigned ? BED.ward + ', ' + BED.bed : 'Not assigned', 'BMS')
+    + row('Room status', assigned ? I18N.en['clean.' + bedState] : '—', 'BMS')
+    + row('Expected ready', bedReadyAt ? clock(bedReadyAt) : '—', 'BMS')
+    + row('Caregiver reported',
+        enroute[s.id] ? 'On the way to ' + I18N.en['dest.' + s.id]
+        : (canAdvance() || current >= STOPS.length - 1
+            ? 'Called, not yet acknowledged' : 'Waiting at this step'), 'App')
+    + row('Last seen', bedState === 'ready' ? 'Ward corridor' : 'CE waiting area', 'RTLS')
+    + row('Tag ID', current >= tagIdx ? 'RT-4471' : 'Not fitted', 'RTLS')
+    + row('Deposit', money(wc.dep) + ' due', 'Jireh')
+    + row('Insurer', insurer || 'Not selected', 'Jireh')
+    + row('Insurer LOG', I18N.en['cov.' + logState], 'Jireh')
+    + row('Documents', done + ' of ' + DOCS.length + ' complete', 'OAS')
+    + row('Alerts opted in', optIn ? 'Yes' : 'No', 'OAS')
+    + row('Callback requested', callbackAsked ? 'Yes' : 'No', 'Jireh');
+
+  const log = document.getElementById('staffLog');
+  if(!alerts.length){ log.innerHTML = '<p class="empty">No messages sent yet.</p>'; return; }
+  log.innerHTML = alerts.map(a=>
+    '<div class="log-row"><b>' + I18N.en[a.titleKey] + '</b>: ' + I18N.en[a.bodyKey]
+    + '<div class="log-meta">Sent ' + clock(a.ts) + ' · owner ' + I18N.en[a.ownerKey]
+    + (a.act ? ' · <span class="due">follow up due</span>' : ' · no follow up') + '</div></div>'
+  ).join('');
+}
+
+/* ------------------------------------------------------------
+   Depth cues. The Finance page runs several screens long, so it
+   has to say so: a section index under the title, a fade at the
+   living edge, and a one-time nudge that clears on first scroll.
+   ------------------------------------------------------------ */
+/* One icon set for the Finance sections. Stroke only, currentColor, so the
+   same markup works on a white pill, a filled pill and a dark heading. */
+const SEC_ICONS = {
+  'fs-ask':     '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><circle cx="8.6" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="15.4" cy="12" r=".9" fill="currentColor" stroke="none"/>',
+  'fs-wards':   '<path d="M2 4v16"/><path d="M2 9h17a3 3 0 0 1 3 3v8"/><path d="M2 17h20"/><path d="M6.5 9v8"/>',
+  'fs-ins':     '<path d="M12 21.8C7.5 20.2 4 17.4 4 12.6V5.6a1 1 0 0 1 1-1c2.2 0 4.9-1.3 6.4-2.5a1 1 0 0 1 1.2 0C14.1 3.3 16.8 4.6 19 4.6a1 1 0 0 1 1 1v7c0 4.8-3.5 7.6-8 9.2Z"/><path d="m9 12 2.2 2.2L15.4 10"/>',
+  'fs-docs':    '<rect x="8.5" y="2.5" width="7" height="4" rx="1.2"/><path d="M15.5 4.5H18a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h2.5"/><path d="m8.6 13.4 2 2 4.2-4.2"/>',
+  'fs-support': '<path d="M4 14.5v-2a8 8 0 0 1 16 0v2"/><path d="M4 13.5h2a1.5 1.5 0 0 1 1.5 1.5v2.5A1.5 1.5 0 0 1 6 19H5.5A1.5 1.5 0 0 1 4 17.5Z"/><path d="M20 13.5h-2a1.5 1.5 0 0 0-1.5 1.5v2.5A1.5 1.5 0 0 0 18 19h.5a1.5 1.5 0 0 0 1.5-1.5Z"/><path d="M20 19v.5a2.5 2.5 0 0 1-2.5 2.5H13"/>',
+  'fs-gloss':   '<path d="M12 7.2v13.6"/><path d="M3 18.5a1 1 0 0 1-1-1V4.6a1 1 0 0 1 1-1h5a4 4 0 0 1 4 3.6 4 4 0 0 1 4-3.6h5a1 1 0 0 1 1 1v12.9a1 1 0 0 1-1 1h-5.6a3.4 3.4 0 0 0-3.4 2.3 3.4 3.4 0 0 0-3.4-2.3Z"/>'
+};
+function secIcon(id){
+  const d = SEC_ICONS[id];
+  if(!d) return '';
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" '
+       + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+       + d + '</svg>';
+}
+function paintSecIcons(){
+  document.querySelectorAll('.fsec-ic[data-ic]').forEach(el=>{ el.innerHTML = secIcon(el.dataset.ic); });
+}
+
+const JUMPS = [
+  {id:'fs-ask',     k:'jump.ask'},
+  {id:'fs-ins',     k:'jump.ins'},
+  {id:'fs-wards',   k:'jump.wards'},
+  {id:'fs-docs',    k:'jump.docs'},
+  {id:'fs-support', k:'jump.support'},
+  {id:'fs-gloss',   k:'jump.gloss'}
+];
+let scrolled = {};
+
+function renderJump(){
+  const nav = document.getElementById('finJump');
+  if(!nav) return;
+  nav.innerHTML = JUMPS.map(j =>
+    '<button type="button" data-goto="' + j.id + '">' + secIcon(j.id)
+    + '<span>' + t(j.k) + '</span></button>').join('');
+  nav.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>showFinSection(b.dataset.goto));
+  });
+  showFinSection(finSection, true);
+}
+
+/* Show one Finance panel and nothing else. The pill row is the only way in
+   and out, which is the point: no long scroll, no hunting for a heading. */
+function showFinSection(id, quiet){
+  if(!JUMPS.some(j => j.id === id)) id = JUMPS[0].id;
+  finSection = id;
+  JUMPS.forEach(j=>{
+    const el = document.getElementById(j.id);
+    if(el) el.hidden = j.id !== id;
+  });
+  setFinTitle(id);
+  const nav = document.getElementById('finJump');
+  if(nav) nav.querySelectorAll('button').forEach(b=>{
+    const on = b.dataset.goto === id;
+    b.setAttribute('aria-current', String(on));
+    if(on) keepPillInView(nav, b);
+  });
+  const view = document.getElementById('view-finance');
+  if(view){
+    view.classList.toggle('fill', id === 'fs-ask');
+    if(!quiet) view.scrollTop = 0;
+  }
+  requestAnimationFrame(updateScrollUI);
+}
+
+function activeView(){ return document.querySelector('.view.scrolls:not([hidden])'); }
+
+function updateScrollUI(){
+  const v = activeView();
+  const mask = document.getElementById('fadeMask');
+  const cue  = document.getElementById('scrollCue');
+  if(!mask || !cue) return;
+  if(!v){ mask.classList.remove('on'); cue.hidden = true; return; }
+  const more = v.scrollHeight - v.clientHeight - v.scrollTop > 24;
+  mask.classList.toggle('on', more);
+  cue.hidden = !(more && !scrolled[v.id]);
+
+}
+
+/* The page headline is the section you are reading, so the pill row and the
+   title never say two different things. */
+let finSection = 'fs-ask';
+function finCurrentSection(){ return finSection; }
+
+/* Nudge the active pill into the visible part of the strip without touching
+   any ancestor scroll, which scrollIntoView would do to the scaled frame. */
+function keepPillInView(nav, btn){
+  const pad = 12;
+  const left  = btn.offsetLeft - pad;
+  const right = btn.offsetLeft + btn.offsetWidth + pad;
+  if(left < nav.scrollLeft) nav.scrollTo({left, behavior:'smooth'});
+  else if(right > nav.scrollLeft + nav.clientWidth)
+    nav.scrollTo({left: right - nav.clientWidth, behavior:'smooth'});
+}
+
+function setFinTitle(id){
+  const h  = document.getElementById('finTitle');
+  const ic = document.getElementById('finIcon');
+  if(ic) ic.innerHTML = secIcon(id);
+  if(!h) return;
+  const j = JUMPS.find(x => x.id === id);
+  h.textContent = t(j ? j.k : 'jump.ask');
+}
+
+document.querySelectorAll('.view.scrolls').forEach(v=>{
+  v.addEventListener('scroll',()=>{
+    if(v.scrollTop > 8) scrolled[v.id] = true;
+    updateScrollUI();
+  }, {passive:true});
+});
+window.addEventListener('resize', updateScrollUI);
+
+function wireDisclosure(sel){
+  document.querySelectorAll(sel).forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const p = document.getElementById(btn.getAttribute('aria-controls'));
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      p.hidden = open;
+    });
+  });
+}
+
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-al]').forEach(el=>{
+    el.setAttribute('aria-label', t(el.dataset.i18nAl));
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPh); });
+  renderBed(); renderLine(); renderQueue(); renderWClass(); renderEstimate();
+  renderInsurers(); renderClaims(); renderCover(); renderDocs(); renderJump(); renderGlossary(); renderFaq(); renderChips(); renderStaff();
+  paintSecIcons();
+  document.getElementById('chatLog').innerHTML = '';
+  push('bot', t('fin.greet'));
+  if(callbackAsked) document.getElementById('btnBook').textContent = t('fin.booked');
+  centerCurrent(false);
+}
+
+/* ============================================================
+   5. WIRING
+   ============================================================ */
+document.getElementById('btnNext').addEventListener('click',()=>{
+  const act = pendingAction();
+  if(act === 'onway'){
+    /* Step one: tell the department you have set off. Nothing moves on the
+       journey yet — you have not arrived, and saying so would be a lie. */
+    enroute[STOPS[current].id] = true;
+    paintStatus(); renderQueue(); renderStaff();
+    toast('toast.onway');
+    return;
+  }
+  if(act === 'arrived' || act === 'done') goTo(current + 1, true);
+});
+document.getElementById('btnBack').addEventListener('click',()=>{
+  if(current > 0) goTo(current - 1, true);
+});
+
+/* Scoped to the Wards toggle only. The rider control uses the same .seg-b
+   class for its look, so a page-wide selector here would fire on a rider
+   tap, set wardView to undefined, and hide both ward views at once. */
+document.getElementById('wardSeg').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-b');
+  if(!b || !b.dataset.wview) return;
+  wardView = b.dataset.wview;
+  document.querySelectorAll('#wardSeg .seg-b').forEach(x =>
+    x.setAttribute('aria-selected', String(x.dataset.wview === wardView)));
+  document.getElementById('wclassList').hidden = wardView !== 'cards';
+  document.getElementById('wcompare').hidden   = wardView !== 'compare';
+});
+function setNights(n){
+  nights = Math.max(1, Math.min(10, n));
+  renderWClass(); renderCompare(); renderEstimate(); renderClaims();
+}
+document.getElementById('nightsDown').addEventListener('click',()=>setNights(nights - 1));
+document.getElementById('nightsUp').addEventListener('click',()=>setNights(nights + 1));
+document.getElementById('riderSeg').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-b');
+  if(!b) return;
+  riderMode = b.dataset.rider;
+  renderWClass(); renderCompare(); renderEstimate(); renderClaims();
+});
+document.getElementById('planCard').addEventListener('click', e=>{
+  const b = e.target.closest('.ins-opt');
+  if(b) selectInsurer(b.dataset.ins);
+});
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    document.querySelectorAll('.view').forEach(v=>{ v.hidden = true; });
+    document.getElementById('view-' + tab.dataset.view).hidden = false;
+    document.getElementById('controls').hidden = tab.dataset.view !== 'home';
+    document.getElementById('finJump').hidden = tab.dataset.view !== 'finance';
+    if(tab.dataset.view === 'finance') showFinSection(finSection, true);
+    if(tab.dataset.view === 'staff') renderStaff();
+    requestAnimationFrame(updateScrollUI);
+    if(tab.dataset.view === 'home') setTimeout(()=>centerCurrent(false), 20);
+  });
+});
+
+const bedToggle = document.getElementById('bedToggle');
+bedToggle.addEventListener('click',()=>{
+  const open = bedToggle.getAttribute('aria-expanded') === 'true';
+  bedToggle.setAttribute('aria-expanded', String(!open));
+  document.getElementById('bedPanel').hidden = open;
+  setTimeout(()=>centerCurrent(false), 20);
+});
+
+const insInput = document.getElementById('insInput');
+insInput.addEventListener('focus',()=>filterInsurers(insInput.value));
+insInput.addEventListener('input',()=>{ insurer = ''; filterInsurers(insInput.value); });
+document.getElementById('insList').addEventListener('click', e=>{
+  const b = e.target.closest('.ins-opt');
+  if(b) selectInsurer(b.dataset.ins);
+});
+document.getElementById('insClear').addEventListener('click',()=>{
+  insurer = '';
+  const input = document.getElementById('insInput');
+  input.value = '';
+  renderClaims(); renderWClass(); renderCompare(); renderEstimate(); renderStaff();
+  syncClear();
+  input.focus();
+  filterInsurers('');
+});
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#insCombo')){
+    const list = document.getElementById('insList');
+    if(list){ list.hidden = true; insInput.setAttribute('aria-expanded','false'); }
+  }
+});
+
+document.getElementById('btnBook').addEventListener('click', function(){
+  callbackAsked = true;
+  this.textContent = t('fin.booked');
+  addAlert('fin.office','fin.booked','own.business', true);
+  toast('toast.callback');
+  renderStaff();
+});
+
+const optBtn = document.getElementById('optIn');
+optBtn.addEventListener('click',()=>{
+  optIn = !optIn;
+  optBtn.setAttribute('aria-pressed', String(optIn));
+  document.getElementById('setSaved').textContent = t('set.saved');
+  renderStaff();
+});
+document.getElementById('phone').addEventListener('input',()=>{
+  document.getElementById('setSaved').textContent = t('set.saved');
+});
+document.getElementById('prefLang').addEventListener('change', e=>{
+  LANG = e.target.value;
+  document.getElementById('langSelect').value = LANG;
+  applyLang();
+  document.getElementById('setSaved').textContent = t('set.saved');
+});
+document.getElementById('langSelect').addEventListener('change', e=>{
+  LANG = e.target.value;
+  document.getElementById('prefLang').value = LANG;
+  applyLang();
+});
+
+function fitDevice(){
+  const d = document.getElementById('device');
+  if(!d) return;
+  const wide = window.innerWidth > 920;
+  const availW = window.innerWidth - (wide ? 96 : 32);
+  const availH = window.innerHeight - (wide ? 72 : 48);
+  const s = Math.max(0.4, Math.min(1, availW / 421, availH / 880));
+  d.style.transform = 'scale(' + s.toFixed(4) + ')';
+  /* collapse the layout footprint to the scaled size so the flex row stays tight */
+  d.style.margin = ((s - 1) * 880 / 2).toFixed(1) + 'px ' + ((s - 1) * 421 / 2).toFixed(1) + 'px';
+}
+function sbClock(){
+  const el = document.getElementById('sbTime');
+  if(el) el.textContent = clock(new Date());
+}
+
+/* ============================================================
+   6. FINANCE CHAT
+   Calls the Anthropic API when reachable. On a plain static host
+   it falls back to a local matcher so the prototype still demos.
+   ============================================================ */
+const LANG_NAME = {en:'English', zh:'Simplified Chinese', ms:'Malay', ta:'Tamil'};
+function systemPrompt(){
+  const w = chosenWard(), c = costOf(w);
+  const tierName = ['Class B2/C only','Class B1','Class A','private hospital'][c.planTier];
+  const riderName = {none:'no rider', neu:'a rider bought from Apr 2026, which cannot pay the deductible', legacy:'an older rider that still pays the deductible'}[riderMode];
+  return 'You are the financial counselling assistant for KK Women\'s and Children\'s Hospital in '
+  + 'Singapore, speaking to a caregiver whose child is being admitted.\n\n'
+  + 'Context: they are looking at ' + I18N.en['wc.' + w.id + '.n'] + ' at ' + money(w.daily)
+  + ' per night for ' + nights + ' night(s), deposit ' + money(w.dep) + '. Estimated bill '
+  + money0(c.gross) + ', plan pays about ' + money0(c.pay) + ', MediSave about ' + money0(c.msave)
+  + ', cash about ' + money0(c.cash) + '. Insurer is ' + (insurer || 'not selected')
+  + ' (entitlement: ' + tierName + ', ' + riderName + ')'
+  + ' and the letter of guarantee is ' + I18N.en['cov.' + logState] + '.'
+  + (c.prorate ? ' This class sits above what the plan is entitled to, so the claim there is pro-rated to about '
+      + pct(c.factor) + '%.' : '')
+  + (c.under ? ' The bill on this stay is below the ' + money0(c.ded)
+      + ' deductible, so no Shield plan pays out at all. Say this plainly and early.' : '')
+  + '\n\nRules:\n'
+  + '- Reply in ' + LANG_NAME[LANG] + '.\n'
+  + '- Under 80 words. Plain words, short sentences, no jargon.\n'
+  + '- Give ranges, never exact totals. Always say the counsellor confirms final figures.\n'
+  + '- Cover only: ward classes and subsidy, deposits, MediSave and MediShield Life, insurance, '
+  + 'documents to bring, instalment and financial assistance options.\n'
+  + '- If they ask which ward to pick, explain the trade off both ways and never decide for them.\n'
+  + '- Class A and B1 carry no government subsidy, and a plan only entitled to a lower class has its '
+  + 'claim pro-rated there, so a higher class costs more in cash and does not raise the payout.\n'
+  + '- Upgrading later backdates the higher charges to day one, except the room fee.\n'
+  + '- If asked anything clinical, say a nurse or doctor must answer that, and stop.\n'
+  + '- Never promise a ward, a wait time, or an approval.';
+}
+
+const FALLBACK = [
+  {k:['cost','how much','price','bill','berapa','kos','多少','费用','செலவு','கட்டணம்'],
+   a:{en:'The bill depends on ward class, tests and how many nights you stay. The ward options below show the nightly charge for each class and its deposit. The counsellor prints an estimate before you agree to anything.',
+      zh:'账单取决于病房等级、检查项目与住院天数。下方的病房选择列出各等级的每晚费用与订金。咨询员会在您同意之前打印预估账单。',
+      ms:'Bil bergantung pada kelas wad, ujian dan bilangan malam. Pilihan wad di bawah menunjukkan caj semalam dan deposit setiap kelas.',
+      ta:'கட்டணம் வார்டு வகை, சோதனைகள், தங்கும் நாட்களைப் பொறுத்தது. கீழே ஒவ்வொரு வகையின் இரவு கட்டணமும் முன்பணமும் உள்ளன.'}},
+  {k:['medisave','储蓄','மெடிசேவ்'],
+   a:{en:'MediSave can be used from your own or your spouse\u2019s account, up to a daily withdrawal limit. Surgery has separate limits. The authorisation form is on the document checklist below.',
+      zh:'可动用您或配偶的保健储蓄户头，每日提款有上限。手术另有额度规定。授权书列在下方的文件清单中。',
+      ms:'MediSave boleh digunakan daripada akaun anda atau pasangan, dengan had harian. Borang kebenaran ada dalam senarai dokumen di bawah.',
+      ta:'உங்கள் அல்லது துணைவரின் கணக்கிலிருந்து பயன்படுத்தலாம், தினசரி வரம்பு உண்டு. அங்கீகார படிவம் கீழே உள்ள ஆவணப் பட்டியலில் உள்ளது.'}},
+  {k:['deposit','upfront','订金','押金','முன்பணம்'],
+   a:{en:'The deposit for your selected ward class is shown in the estimate below. It is set against your final bill, not an extra charge, and is often reduced once MediSave and insurance are applied.',
+      zh:'您所选病房等级的订金显示在下方预估中。订金会从最终账单扣除，并非额外费用，使用保健储蓄与保险后往往可减少。',
+      ms:'Deposit bagi kelas wad pilihan anda ditunjukkan dalam anggaran di bawah. Ia ditolak daripada bil akhir, bukan caj tambahan.',
+      ta:'நீங்கள் தேர்ந்தெடுத்த வகையின் முன்பணம் கீழே உள்ளது. இது இறுதிக் கட்டணத்தில் கழிக்கப்படும், கூடுதல் கட்டணம் அல்ல.'}},
+  {k:['bring','document','带什么','资料','bawa','dokumen','கொண்டு வர'],
+   a:{en:'The document checklist below lists everything: your NRIC, your child\u2019s birth certificate, the signed consent form, the MediSave authorisation and your insurance details.',
+      zh:'下方的文件清单已列出全部所需：您的身份证、孩子的出生证明、已签署的同意书、保健储蓄授权书与保险资料。',
+      ms:'Senarai dokumen di bawah menyenaraikan semuanya: NRIC anda, sijil kelahiran anak, borang kebenaran, kebenaran MediSave dan butiran insurans.',
+      ta:'கீழே உள்ள ஆவணப் பட்டியலில் அனைத்தும் உள்ளன: NRIC, பிறப்புச் சான்றிதழ், ஒப்புதல் படிவம், MediSave அங்கீகாரம், காப்பீட்டு விவரங்கள்.'}},
+  {k:['ward','class','subsid','病房','等级','津贴','kelas','wad','subsidi','வார்டு','மானிய'],
+   a:{en:'Ward class sets both comfort and cost. B2 and C carry means tested government subsidy; A and B1 do not. Tap any class below to see its features and how the estimate changes.',
+      zh:'病房等级同时决定舒适度与费用。B2 与 C 级享有按收入审核的政府津贴，A 与 B1 级没有。点击下方任一等级查看设施与预估变化。',
+      ms:'Kelas wad menentukan keselesaan dan kos. B2 dan C menerima subsidi kerajaan; A dan B1 tidak. Ketik mana-mana kelas di bawah.',
+      ta:'வார்டு வகை வசதியையும் செலவையும் தீர்மானிக்கிறது. B2, C க்கு அரசு மானியம் உண்டு; A, B1 க்கு இல்லை. கீழே தட்டி விவரங்களைப் பாருங்கள்.'}},
+  {k:['afford','cannot pay','help','assistance','付不起','援助','tidak mampu','bantuan','கட்ட முடியாது','உதவி'],
+   a:{en:'Say so plainly at counselling. The hospital has instalment plans, Medifund and other schemes, and a medical social worker can review your case. You can also request a Administration Office call back below.',
+      zh:'请在咨询时直接说明。医院设有分期付款、保健基金等援助计划，医务社工也可为您评估。您也可在下方请求 行政办公室来电。',
+      ms:'Nyatakan terus semasa kaunseling. Hospital menyediakan pelan ansuran, Medifund dan skim lain. Anda juga boleh minta panggilan balik di bawah.',
+      ta:'ஆலோசனையின்போது வெளிப்படையாகச் சொல்லுங்கள். தவணை திட்டங்கள், Medifund உள்ளன. கீழே நிர்வாக அலுவலக அழைப்பையும் கோரலாம்.'}},
+  {k:['insurance','guarantee','保险','担保','insurans','jaminan','காப்பீடு','உத்தரவாத'],
+   a:{en:'Pick your insurer in the Check your insurance section below and the letter of guarantee status will show there. Until it is approved, plan to pay the deposit yourself and claim later.',
+      zh:'请在下方的查看您的保险中选择保险公司，担保书状态会显示在该处。在批准之前，请先自行支付订金，之后再申请理赔。',
+      ms:'Pilih penanggung insurans anda di bahagian Semak insurans anda di bawah dan status surat jaminan akan dipaparkan. Sehingga diluluskan, bayar deposit sendiri dahulu.',
+      ta:'கீழே உள்ள காப்பீட்டு பகுதியில் உங்கள் நிறுவனத்தைத் தேர்வு செய்யுங்கள்; உத்தரவாதக் கடிதத்தின் நிலை அங்கே தெரியும். ஒப்புதல் வரும் வரை முன்பணத்தை நீங்களே செலுத்த வேண்டியிருக்கும்.'}},
+  {k:['payment','pay at counter','缴费','付款','bayaran','கட்டணம் செலுத்த'],
+   a:{en:'The payment step after triage is the consultation deposit at the payment counter. Keep the receipt, since it is set against your final bill if your child is admitted.',
+      zh:'分诊后的缴费步骤是在缴费柜台缴付诊金订金。请保留收据，若孩子入院，该笔款项会从最终账单中扣除。',
+      ms:'Langkah pembayaran selepas triaj ialah deposit konsultasi di kaunter bayaran. Simpan resit kerana ia ditolak daripada bil akhir.',
+      ta:'பரிசோதனைக்குப் பின் வரும் கட்டண கட்டம் ஆலோசனை முன்பணம். ரசீதை வைத்திருங்கள்; இது இறுதிக் கட்டணத்தில் கழிக்கப்படும்.'}}
+];
+const DEFAULT_REPLY = {
+  en:'I can help with ward classes, deposits, MediSave, insurance, documents and financial assistance. Ask me about any of those, or request a Administration Office call back below.',
+  zh:'我可以说明病房等级、订金、保健储蓄、保险、需带资料与经济援助。请问我以上任何一项。',
+  ms:'Saya boleh bantu tentang kelas wad, deposit, MediSave, insurans, dokumen dan bantuan kewangan. Tanya saya.',
+  ta:'வார்டு வகை, முன்பணம், MediSave, காப்பீடு, ஆவணங்கள், நிதி உதவி பற்றி உதவ முடியும். கேளுங்கள்.'
+};
+function localAnswer(q){
+  const s = q.toLowerCase();
+  const hit = FALLBACK.find(f => f.k.some(k => s.includes(k)));
+  return (hit ? hit.a[LANG] : DEFAULT_REPLY[LANG]) || DEFAULT_REPLY.en;
+}
+
+/* Any question about the preset insurances returns this prototype placeholder */
+const INS_PLACEHOLDER_MSG = 'As there is no actual chatbot here, assume these texts placed here outlines everything about this selected insurance.';
+const INS_KEYWORDS = ['insurance','insurer','policy','coverage','premium','claim',
+  'medishield','careshield','eldershield','medisave care','shield plan','healthshield',
+  'supremehealth','prushield','incomeshield','letter of guarantee',
+  'aia','great eastern','prudential','singlife','hsbc life','raffles shield','raffles health',
+  'manulife','tokio marine','china taiping','china life','etiqa','fwd','msig','sompo',
+  'liberty insurance','chubb','qbe','allianz','cigna','axa','bupa','aetna','now health',
+  'william russell','april international','pacific cross','generali','integra','geoblue','img global',
+  'critical illness','disability income','long-term care','maternity insurance','dental insurance',
+  'travel insurance','student health','personal accident','group hospital','group employee',
+  'group outpatient','primary care plan','pcp','foreign worker medical','work injury','wica','fwmi'];
+function isInsuranceQuery(q){
+  const s = q.toLowerCase();
+  if(INSURANCE_LIST.some(n => s.includes(n.toLowerCase()))) return true;
+  return INS_KEYWORDS.some(k => s.includes(k));
+}
+
+function renderChips(){
+  document.getElementById('chatChips').innerHTML =
+    [1,2,3,4].map(n=>'<button class="chip">' + t('chip.' + n) + '</button>').join('');
+  document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>ask(c.textContent)));
+}
+
+const chatLog = document.getElementById('chatLog');
+function push(role, text, note){
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.innerHTML = text + (note ? '<em>' + note + '</em>' : '');
+  chatLog.appendChild(d);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return d;
+}
+
+let busy = false;
+async function ask(q){
+  if(busy || !q.trim()) return;
+  busy = true;
+  document.getElementById('chatSend').disabled = true;
+  push('me', esc(q));
+  const waiting = push('bot','<span class="typing"><span></span><span></span><span></span></span>');
+  if(isInsuranceQuery(q)){
+    await new Promise(r => setTimeout(r, 500));
+    waiting.remove();
+    push('bot', esc(INS_PLACEHOLDER_MSG));
+    busy = false;
+    document.getElementById('chatSend').disabled = false;
+    document.getElementById('chatInput').focus();
+    return;
+  }
+  let answer = null;
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6', max_tokens:1000,
+        system:systemPrompt(), messages:[{role:'user', content:q}]})
+    });
+    if(r.ok){
+      const data = await r.json();
+      const txt = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+      if(txt) answer = txt;
+    }
+  }catch(e){ /* static host or offline */ }
+  waiting.remove();
+  if(answer) push('bot', esc(answer).replace(/\n/g,'<br>'));
+  else push('bot', localAnswer(q), t('fin.offline'));
+  busy = false;
+  document.getElementById('chatSend').disabled = false;
+  document.getElementById('chatInput').focus();
+}
+
+document.getElementById('chatForm').addEventListener('submit', e=>{
+  document.querySelector('.chat-shell').classList.add('open');
+  e.preventDefault();
+  const i = document.getElementById('chatInput');
+  const v = i.value; i.value = '';
+  ask(v);
+});
+
+/* boot */
+sbClock();
+setInterval(sbClock, 30000);
+fitDevice();
+window.addEventListener('resize', fitDevice);
+applyLang();
+goTo(0, false);
+requestAnimationFrame(updateScrollUI);
+setTimeout(updateScrollUI, 400);
+</script>
+</body>
+</html>
