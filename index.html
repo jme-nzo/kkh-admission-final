@@ -442,6 +442,31 @@ table.cmp .pos{color:var(--done)}
 .claim-l{flex:1;min-width:0}
 .claim-w{font-size:13px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============================================================
+   PHONE = REAL APP. On actual phones we drop the whole iPhone
+   presentation — bezel, side buttons, dark backdrop, dynamic
+   island and the fake status bar (time / wifi / battery) — and let
+   the app itself fill the screen edge-to-edge. Desktop keeps the
+   full device mockup untouched.
+   ============================================================ */
+@media (max-width:640px){
+  body{background:var(--paper);}                 /* kill the navy backdrop */
+  .stage{padding:0;overflow:visible;min-height:100dvh;}
+  .device{transform:none!important;width:100%;height:100dvh;}
+  .bezel{
+    background:none;padding:0;border-radius:0;box-shadow:none;
+    width:100%;height:100dvh;
+  }
+  .btn-side{display:none!important;}             /* physical side buttons */
+  .island{display:none!important;}              /* dynamic island / notch */
+  .statusbar{display:none!important;}           /* fake time / wifi / battery */
+  .screen{
+    width:100%;height:100dvh;border-radius:0;
+  }
+  /* keep app content clear of the phone's real notch / status area */
+  .app{padding-top:env(safe-area-inset-top);}
+}
 </style>
 </head>
 <body>
@@ -699,10 +724,14 @@ table.cmp .pos{color:var(--done)}
   const DW = sw + bez*2;   // full device width  incl. bezel
   const DH = sh + bez*2;   // full device height incl. bezel
   function fitDevice(){
-    const isPhone = window.matchMedia('(max-width:640px)').matches;
-    // margin: breathing room around the frame
-    const mx = isPhone ? 12 : 48;
-    const my = isPhone ? 16 : 48;
+    // On phones the CSS drops the mockup and the app fills the screen, so we
+    // clear any scale and let CSS take over.
+    if(window.matchMedia('(max-width:640px)').matches){
+      device.style.transform = '';
+      return;
+    }
+    // Desktop / tablet: scale the whole silhouette to fit the viewport.
+    const mx = 48, my = 48;
     const availW = window.innerWidth  - mx*2;
     const availH = window.innerHeight - my*2;
     let scale = Math.min(availW / DW, availH / DH, 1);
