@@ -385,7 +385,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .jump button[aria-current="true"]{background:var(--primary);color:#fff;border-color:var(--primary)}
 .fademask{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:50;pointer-events:none;opacity:0;transition:opacity .25s ease;background:linear-gradient(to top,var(--paper) 12%,rgba(235,240,250,0))}
 .fademask.on{opacity:1}
-.scrollcue{position:absolute;left:50%;bottom:16px;z-index:55;display:flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:99px;padding:7px 13px 7px 14px;font-size:11.5px;font-weight:600;box-shadow:0 10px 26px rgba(9,23,64,.42);pointer-events:none;animation:cuebob 1.9s ease-in-out infinite}
+.scrollcue{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;z-index:55;display:flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:99px;padding:7px 13px 7px 14px;font-size:11.5px;font-weight:600;box-shadow:0 10px 26px rgba(9,23,64,.42);pointer-events:auto;cursor:pointer;animation:cuebob 1.9s ease-in-out infinite}
+.scrollcue:active{transform:translateX(-50%) scale(.96)}
+/* small grayed preview of the next step, sitting under the next circle */
+.next-peek{position:absolute;top:56px;left:calc(50% + 84px);transform:translateX(-50%);width:118px;text-align:center;z-index:6;pointer-events:none;font-size:10px;line-height:1.25;font-weight:600;color:var(--ink-faint)}
+.next-peek b{display:block;font-size:8.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);opacity:.75;margin-bottom:1px}
+.next-peek[hidden]{display:none}
 .scrollcue[hidden]{display:none}
 .scrollcue i{display:block;width:7px;height:7px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg) translate(-1px,-1px)}
 @keyframes cuebob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,5px)}}
@@ -551,6 +556,8 @@ table.cmp .pos{color:var(--done)}
                     <circle class="arch-fill" id="archFill" cx="760" cy="760" r="760"></circle>
                   </svg>
                 </div>
+                <!-- small grayed preview of the next step, under the next circle -->
+                <div class="next-peek" id="nextPeek" hidden></div>
               </div>
               <div class="dial-core" id="dialCore"></div>
             </div>
@@ -1949,6 +1956,18 @@ function renderLine(){
     + (pills ? '<div class="pills">' + pills + '</div>' : '')
     + dir;
 
+  /* grayed preview of the next step, under the next circle */
+  const peek = document.getElementById('nextPeek');
+  if(peek){
+    if(current < STOPS.length - 1){
+      const ns = STOPS[current + 1];
+      peek.innerHTML = '<b>' + t('line.next') + '</b>' + t('stop.' + ns.id + '.t');
+      peek.hidden = false;
+    } else {
+      peek.hidden = true;
+    }
+  }
+
   wireDisclosure('#dialCore .dir-q');
   paintStatus();
 }
@@ -2529,6 +2548,25 @@ document.querySelectorAll('.view.scrolls').forEach(v=>{
   }, {passive:true});
 });
 window.addEventListener('resize', updateScrollUI);
+
+/* Tapping the "More below" cue scrolls the current page all the way down.
+   The tween is driven by a timer and plain scrollTop writes, which behave
+   consistently across engines and embedded webviews (native smooth scroll and
+   rAF are dropped in some of them). Reduced-motion jumps straight there. */
+document.getElementById('scrollCue').addEventListener('click', ()=>{
+  const v = activeView();
+  if(!v) return;
+  const end = v.scrollHeight - v.clientHeight;
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+    v.scrollTop = end; return;
+  }
+  const start = v.scrollTop, dist = end - start, t0 = performance.now(), dur = 460;
+  const id = setInterval(()=>{
+    const p = Math.min(1, (performance.now() - t0) / dur);
+    v.scrollTop = start + dist * (1 - Math.pow(1 - p, 3));   /* easeOutCubic */
+    if(p >= 1) clearInterval(id);
+  }, 16);
+});
 
 function wireDisclosure(sel){
   document.querySelectorAll(sel).forEach(btn=>{
