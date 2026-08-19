@@ -161,6 +161,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .msg.bot em{display:block;margin-top:5px;font-style:normal;font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
 .chips{display:flex;gap:5px;flex-wrap:wrap;padding:0 12px 9px}
 .chip{font-size:11.5px;padding:6px 10px;border-radius:99px;text-align:left;border:1.5px solid var(--rule-strong);color:var(--ink-soft);background:var(--surface)}
+/* action buttons the bot offers to jump the user to the right tab */
+.msg-acts{display:flex;flex-wrap:wrap;gap:5px;align-self:flex-start;margin:-3px 0 2px;padding:0}
+.act-btn{font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;background:var(--frost);border:1.5px solid var(--azure);color:var(--navy);cursor:pointer}
+.act-btn:active{transform:scale(.97)}
+.act-btn::after{content:"→";font-weight:700}
 .chat-bar{display:flex;gap:6px;padding:9px;border-top:1.5px solid var(--rule);background:var(--surface);border-radius:0 0 11px 11px}
 .chat-bar input{flex:1;min-width:0;font:inherit;font-size:14px;padding:9px 11px;border:1.5px solid var(--rule);border-radius:9px;background:var(--paper);color:var(--ink)}
 .send{background:var(--primary);color:#fff;border-radius:9px;padding:0 14px;font-weight:600;font-size:13.5px;min-height:38px}
@@ -1110,6 +1115,11 @@ en:{
  'fin.placeholder':'Type your question','fin.send':'Send',
  'fin.greet':'Ask me anything about the cost of your child\u2019s stay.','fin.offline':'Offline mode: stock answer',
  'chip.1':'What will this cost?','chip.2':'Can I use MediSave?','chip.3':'Do I pay a deposit?','chip.4':'What should I bring?',
+ 'nav.goHome':'Open Home','nav.goWards':'See ward classes','nav.goInsurance':'Check insurance','nav.goDocs':'Document checklist','nav.goHelp':'Get help','nav.goAsk':'Ask about cost',
+ 'nav.status':'Your live status and next step are on the Home screen — it shows where you are in the queue and what happens next.',
+ 'nav.directions':'Directions appear on the Home screen once a step is ready. Open Home and tap “Where to go next”.',
+ 'nav.contact':'For a person, ask any nurse at the counter. The Help tab also holds your details and a contact note.',
+ 'nav.menu':'I can point you to the right place. What do you need?',
  'fin.wards':'Ward options','fin.daily':'Room rate','fin.est':'Estimated bill','fin.deposit':'Deposit',
  'fin.free':'{n} of {m} available','fin.night':'per night','fin.avail':'Available now',
  'fin.wardsSub':'Every class gets the same doctors and nurses. What changes is the room, and what you pay.',
@@ -1308,6 +1318,11 @@ zh:{
  'fin.placeholder':'输入您的问题','fin.send':'发送',
  'fin.greet':'关于住院费用的任何问题都可以问我。','fin.offline':'离线模式：预设答案',
  'chip.1':'大概要多少钱？','chip.2':'可以用保健储蓄吗？','chip.3':'需要付订金吗？','chip.4':'需要带什么？',
+ 'nav.goHome':'打开首页','nav.goWards':'查看病房等级','nav.goInsurance':'查看保险','nav.goDocs':'文件清单','nav.goHelp':'获取帮助','nav.goAsk':'询问费用',
+ 'nav.status':'您的实时状态和下一步在首页——显示您的排队位置与接下来会发生什么。',
+ 'nav.directions':'当某一步骤就绪后，路线指引会显示在首页。打开首页并点击“接下来去哪里”。',
+ 'nav.contact':'需要找人，请询问柜台的任何护士。帮助页也有您的资料与联系说明。',
+ 'nav.menu':'我可以带您到正确的地方。您需要什么？',
  'fin.wards':'病房选择','fin.daily':'房费','fin.est':'预估账单','fin.deposit':'订金',
  'fin.free':'可用 {n}／{m}','fin.night':'每晚','fin.avail':'目前可用',
  'fin.wardsSub':'各等级的医生与护士完全相同，不同的只是房间，以及您要付的钱。',
@@ -1466,6 +1481,11 @@ ms:{
  'fin.placeholder':'Taip soalan anda','fin.send':'Hantar',
  'fin.greet':'Tanya apa sahaja tentang kos penginapan anak anda.','fin.offline':'Mod luar talian: jawapan sedia ada',
  'chip.1':'Berapa kosnya?','chip.2':'Boleh guna MediSave?','chip.3':'Perlu bayar deposit?','chip.4':'Apa yang perlu dibawa?',
+ 'nav.goHome':'Buka Utama','nav.goWards':'Lihat kelas wad','nav.goInsurance':'Semak insurans','nav.goDocs':'Senarai dokumen','nav.goHelp':'Dapatkan bantuan','nav.goAsk':'Tanya tentang kos',
+ 'nav.status':'Status langsung dan langkah seterusnya ada di skrin Utama — ia menunjukkan kedudukan anda dalam giliran dan apa yang berlaku seterusnya.',
+ 'nav.directions':'Arah dipaparkan di skrin Utama apabila sesuatu langkah sedia. Buka Utama dan ketik “Ke mana seterusnya”.',
+ 'nav.contact':'Untuk bercakap dengan seseorang, tanya mana-mana jururawat di kaunter. Tab Bantuan juga menyimpan butiran anda.',
+ 'nav.menu':'Saya boleh tunjukkan tempat yang betul. Apa yang anda perlukan?',
  'fin.wards':'Pilihan wad','fin.daily':'Kadar bilik','fin.est':'Anggaran bil','fin.deposit':'Deposit',
  'fin.free':'{n} daripada {m} ada','fin.night':'semalam','fin.avail':'Ada sekarang',
  'fin.wardsSub':'Doktor dan jururawat sama bagi setiap kelas. Yang berbeza ialah biliknya, dan bayaran anda.',
@@ -1624,6 +1644,11 @@ ta:{
  'fin.placeholder':'உங்கள் கேள்வியை தட்டச்சு செய்யுங்கள்','fin.send':'அனுப்பு',
  'fin.greet':'உங்கள் குழந்தையின் சிகிச்சைச் செலவு பற்றி எதையும் கேளுங்கள்.','fin.offline':'ஆஃப்லைன் முறை: முன் தயாரிக்கப்பட்ட பதில்',
  'chip.1':'செலவு எவ்வளவு?','chip.2':'MediSave பயன்படுத்தலாமா?','chip.3':'முன்பணம் கட்ட வேண்டுமா?','chip.4':'என்ன கொண்டு வர வேண்டும்?',
+ 'nav.goHome':'முகப்பைத் திற','nav.goWards':'வார்டு வகைகள்','nav.goInsurance':'காப்பீட்டைப் பார்','nav.goDocs':'ஆவணப் பட்டியல்','nav.goHelp':'உதவி பெறு','nav.goAsk':'செலவு பற்றி கேள்',
+ 'nav.status':'உங்கள் நேரடி நிலையும் அடுத்த படியும் முகப்புத் திரையில் உள்ளன — வரிசையில் நீங்கள் எங்கே இருக்கிறீர்கள், அடுத்து என்ன என்பதைக் காட்டும்.',
+ 'nav.directions':'ஒரு படி தயாரானதும் திசைகள் முகப்புத் திரையில் தோன்றும். முகப்பைத் திறந்து “அடுத்து எங்கே” என்பதைத் தட்டுங்கள்.',
+ 'nav.contact':'ஒருவரிடம் பேச, கவுண்டரில் உள்ள எந்த செவிலியரிடமும் கேளுங்கள். உதவி தாவலிலும் உங்கள் விவரங்கள் உள்ளன.',
+ 'nav.menu':'சரியான இடத்திற்கு உங்களை அழைத்துச் செல்கிறேன். உங்களுக்கு என்ன தேவை?',
  'fin.wards':'வார்டு தேர்வுகள்','fin.daily':'அறைக் கட்டணம்','fin.est':'மதிப்பீட்டு கட்டணம்','fin.deposit':'முன்பணம்',
  'fin.free':'{m} இல் {n} காலி','fin.night':'ஒரு இரவுக்கு','fin.avail':'தற்போது காலி',
  'fin.wardsSub':'எல்லா வகைகளிலும் மருத்துவரும் செவிலியரும் ஒன்றே. மாறுவது அறையும், நீங்கள் செலுத்தும் தொகையும் மட்டுமே.',
@@ -2826,6 +2851,62 @@ function localAnswer(q){
   return (hit ? hit.a[LANG] : DEFAULT_REPLY[LANG]) || DEFAULT_REPLY.en;
 }
 
+/* ---------- offline guide: advise + jump the user to the right tab ----------
+   No AI. Keyword routing only. Each reply can carry "jump" buttons whose
+   click switches to the tab / finance sub-section that holds the answer. */
+function goArea(view, section){
+  const tab = document.querySelector('.tab[data-view="' + view + '"]');
+  if(tab) tab.click();
+  if(view === 'finance' && section && typeof showFinSection === 'function') showFinSection(section, true);
+  requestAnimationFrame(()=>{ if(typeof updateScrollUI === 'function') updateScrollUI(); });
+}
+/* navigation-first intents (status, directions, a real person) */
+const NAV = [
+  {k:['queue','status','turn','triage','how long','wait','my number','where am i','排队','号码','等待','轮到','状态','giliran','nombor','beratur','tunggu','status','வரிசை','எண்','காத்தி','நிலை'],
+   msg:'nav.status', acts:[['nav.goHome','home']]},
+  {k:['where do i go','where to go','direction','how do i get','which counter','which room','which level','go next','怎么走','方向','哪里','去哪','arah','ke mana','bilik','எங்கே','திசை','அறை'],
+   msg:'nav.directions', acts:[['nav.goHome','home']]},
+  {k:['nurse','someone','a person','talk to','speak to','contact','call','counter','help desk','front desk','护士','联系','找人','电话','柜台','jururawat','hubungi','telefon','kaunter','செவிலி','தொடர்பு','அழை','கவுண்டர்'],
+   msg:'nav.contact', acts:[['nav.goHelp','help']]}
+];
+/* finance topics -> a jump button appended to the existing advice copy */
+const TOPIC = [
+  {k:['insurance','guarantee','insurer','保险','担保','insurans','jaminan','காப்பீடு','உத்தரவாத'], acts:[['nav.goInsurance','finance','fs-ins']]},
+  {k:['ward','class','room','bed','病房','等级','床','kelas','wad','katil','வார்டு','அறை','படுக்கை'], acts:[['nav.goWards','finance','fs-wards']]},
+  {k:['document','bring','papers','checklist','带什么','资料','文件','dokumen','bawa','ஆவண','கொண்டு'], acts:[['nav.goDocs','finance','fs-docs']]},
+  {k:['cost','how much','price','bill','deposit','medisave','pay','多少','费用','订金','缴费','kos','bayar','செலவு','கட்டணம்','முன்பணம்'], acts:[['nav.goWards','finance','fs-wards']]}
+];
+function botReply(q){
+  const s = q.toLowerCase();
+  const nav = NAV.find(n => n.k.some(k => s.includes(k)));
+  if(nav) return { text: t(nav.msg), acts: nav.acts };
+  const hit = FALLBACK.find(f => f.k.some(k => s.includes(k)));
+  if(hit){
+    const topic = TOPIC.find(x => x.k.some(k => s.includes(k)));
+    return { text: (hit.a[LANG] || hit.a.en), acts: topic ? topic.acts : [] };
+  }
+  /* nothing matched -> friendly menu of jumps */
+  return { text: t('nav.menu'), acts:[
+    ['nav.goHome','home'], ['nav.goWards','finance','fs-wards'],
+    ['nav.goInsurance','finance','fs-ins'], ['nav.goDocs','finance','fs-docs'],
+    ['nav.goHelp','help'] ] };
+}
+function renderActs(acts){
+  if(!acts || !acts.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-acts';
+  acts.forEach(a=>{
+    const b = document.createElement('button');
+    b.className = 'act-btn'; b.type = 'button';
+    b.textContent = t(a[0]);
+    b.addEventListener('click', ()=> goArea(a[1], a[2]));
+    wrap.appendChild(b);
+  });
+  document.getElementById('chatLog').appendChild(wrap);
+  const log = document.getElementById('chatLog');
+  log.scrollTop = log.scrollHeight;
+}
+
 /* Any question about the preset insurances returns this prototype placeholder */
 const INS_PLACEHOLDER_MSG = 'As there is no actual chatbot here, assume these texts placed here outlines everything about this selected insurance.';
 const INS_KEYWORDS = ['insurance','insurer','policy','coverage','premium','claim',
@@ -2868,9 +2949,11 @@ async function ask(q){
   push('me', esc(q));
   const waiting = push('bot','<span class="typing"><span></span><span></span><span></span></span>');
   if(isInsuranceQuery(q)){
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 450));
     waiting.remove();
-    push('bot', esc(INS_PLACEHOLDER_MSG));
+    const insHit = FALLBACK.find(f => f.k.includes('insurance'));
+    push('bot', (insHit ? (insHit.a[LANG] || insHit.a.en) : t('nav.menu')), t('fin.offline'));
+    renderActs([['nav.goInsurance','finance','fs-ins']]);
     busy = false;
     document.getElementById('chatSend').disabled = false;
     document.getElementById('chatInput').focus();
@@ -2890,8 +2973,13 @@ async function ask(q){
     }
   }catch(e){ /* static host or offline */ }
   waiting.remove();
-  if(answer) push('bot', esc(answer).replace(/\n/g,'<br>'));
-  else push('bot', localAnswer(q), t('fin.offline'));
+  if(answer){
+    push('bot', esc(answer).replace(/\n/g,'<br>'));
+  } else {
+    const r = botReply(q);
+    push('bot', r.text, t('fin.offline'));
+    renderActs(r.acts);
+  }
   busy = false;
   document.getElementById('chatSend').disabled = false;
   document.getElementById('chatInput').focus();
