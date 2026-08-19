@@ -691,11 +691,6 @@ table.cmp .pos{color:var(--done)}
               <h4 class="fsec-h" style="margin-top:14px" data-i18n="ins.claimTitle">What this plan claims, by ward class</h4>
               <div class="card" id="claimList"></div>
               <p class="cmp-note" data-i18n="ins.claimNote">Indicative only. Deductibles, co-insurance and pro-ration follow your own policy wording, and the Administration Office confirms before you sign.</p>
-
-              <div class="log-line">
-                <span data-i18n="cov.log">Letter of guarantee</span>
-                <span class="pill dot" id="logPill" data-state="idle"><i></i><b id="logText"></b></span>
-              </div>
             </div>
 
             <div class="fsec" id="fs-docs" hidden>
@@ -2380,8 +2375,10 @@ function selectInsurer(name){
 }
 
 function renderCover(){
+  const pill = document.getElementById('logPill');
+  if(!pill) return;                       /* the letter-of-guarantee line was removed */
   const state = logState === 'approved' ? 'ready' : logState === 'submitted' ? 'processing' : 'idle';
-  document.getElementById('logPill').dataset.state = state;
+  pill.dataset.state = state;
   document.getElementById('logText').textContent = t('cov.' + logState);
 }
 
