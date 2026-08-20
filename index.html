@@ -1112,6 +1112,7 @@ en:{
  'nav.directions':'Directions appear on the Home screen once a step is ready. Open Home and tap “Where to go next”.',
  'nav.contact':'Open the Help tab for the Administration Office number and a request-a-call-back button, or ask any nurse at the counter.',
  'nav.menu':'I can point you to the right place. What do you need?',
+ 'nav.estimate':'Roughly, {cls} for {n} works out to about {gross} in total. With MediSave applied and no insurer selected, the cash share is about {cash}. Indicative estimate only — open the Wards tab to fine-tune it.',
  'fin.wards':'Ward options','fin.daily':'Room rate','fin.est':'Estimated bill','fin.deposit':'Deposit',
  'fin.free':'{n} of {m} available','fin.night':'per night','fin.avail':'Available now',
  'fin.wardsSub':'Every class gets the same doctors and nurses. What changes is the room, and what you pay.',
@@ -1315,6 +1316,7 @@ zh:{
  'nav.directions':'当某一步骤就绪后，路线指引会显示在首页。打开首页并点击“接下来去哪里”。',
  'nav.contact':'打开“帮助”分页可获得行政办公室电话与请求来电按钮，或询问柜台的任何护士。',
  'nav.menu':'我可以带您到正确的地方。您需要什么？',
+ 'nav.estimate':'大致来说，{cls}住{n}的总费用约为 {gross}。在使用保健储蓄且未选择保险的情况下，现金部分约为 {cash}。此为概约估算——打开“病房”分页可进一步调整。',
  'fin.wards':'病房选择','fin.daily':'房费','fin.est':'预估账单','fin.deposit':'订金',
  'fin.free':'可用 {n}／{m}','fin.night':'每晚','fin.avail':'目前可用',
  'fin.wardsSub':'各等级的医生与护士完全相同，不同的只是房间，以及您要付的钱。',
@@ -1478,6 +1480,7 @@ ms:{
  'nav.directions':'Arah dipaparkan di skrin Utama apabila sesuatu langkah sedia. Buka Utama dan ketik “Ke mana seterusnya”.',
  'nav.contact':'Buka tab Bantuan untuk nombor Pejabat Pentadbiran dan butang minta panggilan balik, atau tanya mana-mana jururawat di kaunter.',
  'nav.menu':'Saya boleh tunjukkan tempat yang betul. Apa yang anda perlukan?',
+ 'nav.estimate':'Secara kasar, {cls} untuk {n} berjumlah kira-kira {gross}. Dengan MediSave dan tanpa insurans dipilih, bahagian tunai adalah kira-kira {cash}. Anggaran sahaja — buka tab Wad untuk memperhalusinya.',
  'fin.wards':'Pilihan wad','fin.daily':'Kadar bilik','fin.est':'Anggaran bil','fin.deposit':'Deposit',
  'fin.free':'{n} daripada {m} ada','fin.night':'semalam','fin.avail':'Ada sekarang',
  'fin.wardsSub':'Doktor dan jururawat sama bagi setiap kelas. Yang berbeza ialah biliknya, dan bayaran anda.',
@@ -1641,6 +1644,7 @@ ta:{
  'nav.directions':'ஒரு படி தயாரானதும் திசைகள் முகப்புத் திரையில் தோன்றும். முகப்பைத் திறந்து “அடுத்து எங்கே” என்பதைத் தட்டுங்கள்.',
  'nav.contact':'நிர்வாக அலுவலக எண் மற்றும் அழைப்பு கோரும் பொத்தானுக்கு உதவி தாவலைத் திறக்கவும், அல்லது கவுண்டரில் உள்ள எந்த செவிலியரிடமும் கேளுங்கள்.',
  'nav.menu':'சரியான இடத்திற்கு உங்களை அழைத்துச் செல்கிறேன். உங்களுக்கு என்ன தேவை?',
+ 'nav.estimate':'தோராயமாக, {cls} {n}க்கு மொத்தம் சுமார் {gross} ஆகும். MediSave பயன்படுத்தி, காப்பீடு தேர்ந்தெடுக்கப்படாத நிலையில், பணப் பங்கு சுமார் {cash}. இது தோராய மதிப்பீடே — சரிசெய்ய வார்டு தாவலைத் திறக்கவும்.',
  'fin.wards':'வார்டு தேர்வுகள்','fin.daily':'அறைக் கட்டணம்','fin.est':'மதிப்பீட்டு கட்டணம்','fin.deposit':'முன்பணம்',
  'fin.free':'{m} இல் {n} காலி','fin.night':'ஒரு இரவுக்கு','fin.avail':'தற்போது காலி',
  'fin.wardsSub':'எல்லா வகைகளிலும் மருத்துவரும் செவிலியரும் ஒன்றே. மாறுவது அறையும், நீங்கள் செலுத்தும் தொகையும் மட்டுமே.',
@@ -2862,8 +2866,42 @@ const NAV = [
   {k:['nurse','someone','a person','talk to','speak to','contact','call','counter','help desk','front desk','护士','联系','找人','电话','柜台','jururawat','hubungi','telefon','kaunter','செவிலி','தொடர்பு','அழை','கவுண்டர்'],
    msg:'nav.contact', acts:[['nav.goHelp','help']]}
 ];
+/* Pull a ward class and a night count out of a free-text question so the
+   bot can quote a rough figure from the same costing engine the page uses. */
+function parseNights(s){
+  const m = s.match(/(\d+)\s*(nights?|days?|nite?s?|晚|天|malam|hari|இரவ|நாட)/);
+  return m ? Math.max(1, Math.min(10, parseInt(m[1], 10))) : null;
+}
+function parseWardClass(s){
+  if(/\bb\s*1\b|class\s*b1|ward\s*b1/.test(s)) return 'b1';
+  if(/\bb\s*2\b|class\s*b2|ward\s*b2/.test(s)) return 'b2';
+  if(/\ba\s*1\b|\ba1\b|class\s*a1|ward\s*a1|class\s*a\b|ward\s*a\b/.test(s)) return 'a';
+  if(/class\s*c\b|ward\s*c\b/.test(s)) return 'c';
+  return null;
+}
+function wantsEstimate(s){
+  const cost = /(cost|how much|price|estimate|rough|pay|charge|bill|spend|多少|费用|估|概|kos|berapa|bayar|anggar|செலவு|கட்டணம்|மதிப்பீ|தோராய)/.test(s);
+  return cost && (parseWardClass(s) || parseNights(s));
+}
+/* compute a rough estimate and sync the Wards view to match */
+function estimateReply(s){
+  const cls = parseWardClass(s) || chosenClass;
+  const n   = parseNights(s) || nights;
+  chosenClass = cls;
+  if(typeof setNights === 'function') setNights(n); else nights = n;
+  const w = WCLASS.find(x => x.id === cls);
+  const c = costOf(w, n);
+  const txt = t('nav.estimate')
+    .replace('{cls}', t('wc.' + cls + '.n'))
+    .replace('{n}', nightsLabel(n))
+    .replace('{gross}', money0(c.gross))
+    .replace('{cash}', money0(c.cash));
+  return { text: txt, acts:[['nav.goWards','finance','fs-wards']] };
+}
+
 function botReply(q){
   const s = q.toLowerCase();
+  if(wantsEstimate(s)) return estimateReply(s);
   const nav = NAV.find(n => n.k.some(k => s.includes(k)));
   if(nav) return { text: t(nav.msg), acts: nav.acts };
   const hit = FALLBACK.find(f => f.k.some(k => s.includes(k)));
